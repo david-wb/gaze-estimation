@@ -21,11 +21,10 @@ class Merge(nn.Module):
 class PoseNet(nn.Module):
     def __init__(self, nstack, inp_dim, oup_dim, bn=False, increase=0, **kwargs):
         super(PoseNet, self).__init__()
-        print('inp_dim', inp_dim)
 
         self.nstack = nstack
         self.pre = nn.Sequential(
-            Conv(3, 64, 7, 2, bn=True, relu=True),
+            Conv(3, 64, 7, 1, bn=True, relu=True),
             Residual(64, 128),
             Pool(2, 2),
             Residual(128, 128),
@@ -53,7 +52,6 @@ class PoseNet(nn.Module):
         ## our posenet
         x = imgs.permute(0, 3, 1, 2)  # x of size 1,3,inpdim,inpdim
         x = self.pre(x)
-        print(x.shape)
 
         combined_hm_preds = []
         for i in range(self.nstack):
@@ -63,12 +61,11 @@ class PoseNet(nn.Module):
             combined_hm_preds.append(preds)
             if i < self.nstack - 1:
                 x = x + self.merge_preds[i](preds) + self.merge_features[i](feature)
-                print(x.shape)
         return torch.stack(combined_hm_preds, 1)
 
     def calc_loss(self, combined_hm_preds, heatmaps):
         combined_loss = []
         for i in range(self.nstack):
-            combined_loss.append(self.heatmapLoss(combined_hm_preds[0][:, i], heatmaps))
+            combined_loss.append(self.heatmapLoss(combined_hm_preds[0][i, :], heatmaps))
         combined_loss = torch.stack(combined_loss, dim=1)
         return combined_loss
