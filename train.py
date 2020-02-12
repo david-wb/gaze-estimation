@@ -58,7 +58,7 @@ for i_batch, sample_batched in enumerate(dataloader):
     optimizer.step()
 
     print(i_batch, 'training loss', loss.item())
-    writer.add_scalar("training Loss", 1000 * loss.item(), i_batch)
+    writer.add_scalar("training loss", 1000 * loss.item(), i_batch)
 
     if i_batch % 10 == 0:
         with torch.no_grad():
@@ -70,7 +70,7 @@ for i_batch, sample_batched in enumerate(dataloader):
                 loss = torch.mean(posenet.calc_loss(Yp, Y))
                 val_losses.append(loss.item())
             val_loss = np.mean(val_losses)
-            writer.add_scalar("validation Loss", 1000 * val_loss, i_batch)
+            writer.add_scalar("validation loss", 1000 * val_loss, i_batch)
         print(i_batch, 'validation loss', val_loss)
 
 
