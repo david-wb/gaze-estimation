@@ -70,7 +70,7 @@ for i_batch, sample_batched in enumerate(dataloader):
                 loss = torch.mean(posenet.calc_loss(Yp, Y))
                 val_losses.append(loss.item())
             val_loss = np.mean(val_losses)
-            writer.add_scalar("talidation Loss", 1000 * val_loss, i_batch)
+            writer.add_scalar("validation Loss", 1000 * val_loss, i_batch)
         print(i_batch, 'validation loss', val_loss)
 
 
