@@ -2,7 +2,7 @@ import numpy as np
 import cv2
 
 
-def preprocess_unityeyes_image(img, json_data, oh=90, ow=150):
+def preprocess_unityeyes_image(img, json_data, oh=90, ow=150, heatmap_h=45, heatmap_w=75):
     # Prepare to segment eye image
     ih, iw = img.shape[:2]
 
@@ -49,7 +49,7 @@ def preprocess_unityeyes_image(img, json_data, oh=90, ow=150):
         return heatmap
 
     heatmaps = get_heatmaps((oh, ow), iris_landmarks, transform)
-    heatmaps = [cv2.resize(x, (75, 45)) for x in heatmaps]
+    heatmaps = np.array([cv2.resize(x, (heatmap_w, heatmap_h)) for x in heatmaps])
 
     return {
         'img': eye,

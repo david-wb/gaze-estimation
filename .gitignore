@@ -1,2 +1,4 @@
 datasets/UnityEyes/imgs/
 __pycache__/
+.idea/
+*.zip

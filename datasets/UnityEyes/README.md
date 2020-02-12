@@ -13,3 +13,5 @@ The more images you generate, the more robust the trained neural network would b
 Download the exact dataset used here https://drive.google.com/open?id=1wqTA4gutC-L4h8TcMMQO_3jJYBL15-h3
 
 Download this to ./datasets/UnityEyes/imgs.zip and unzip it. 
+
+This dataset contains 100938 images together with their json metadata files.
