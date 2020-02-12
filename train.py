@@ -37,9 +37,6 @@ if os.path.exists('checkpoint'):
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
 for i_batch, sample_batched in enumerate(dataloader):
-    if i_batch == 1000:
-        break
-
     if i_batch % 2 == 0:
         torch.save({
             'model_state_dict': posenet.state_dict(),
