@@ -35,5 +35,4 @@ class UnityEyesDataset(Dataset):
         eye_sample = preprocess_unityeyes_image(full_img, json_data)
         sample = {'full_img': full_img, 'json_data': json_data }
         sample.update(eye_sample)
-        sample['img'] = sample['img'] / 255.
         return sample

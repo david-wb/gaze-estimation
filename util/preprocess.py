@@ -1,10 +1,12 @@
 import numpy as np
 import cv2
+import util.gaze
 
 
 def preprocess_unityeyes_image(img, json_data, oh=90, ow=150, heatmap_h=45, heatmap_w=75):
     # Prepare to segment eye image
     ih, iw = img.shape[:2]
+    ih_2, iw_2 = ih/2.0, iw/2.0
 
     def process_coords(coords_list):
         coords = [eval(l) for l in coords_list]
@@ -26,8 +28,8 @@ def preprocess_unityeyes_image(img, json_data, oh=90, ow=150, heatmap_h=45, heat
     radius = np.float32(eyeball_radius)
 
     transform = np.zeros((2, 3))
-    transform[0, 2] = -eye_middle[0] * scale + 0.5 * ow # * scale_inv
-    transform[1, 2] = -eye_middle[1] * scale + 0.5 * oh# * scale_inv
+    transform[0, 2] = -eye_middle[0] * scale + 0.5 * ow
+    transform[1, 2] = -eye_middle[1] * scale + 0.5 * oh
     transform[0, 0] = scale
     transform[1, 1] = scale
     
@@ -39,17 +41,38 @@ def preprocess_unityeyes_image(img, json_data, oh=90, ow=150, heatmap_h=45, heat
     # Apply transforms
     eye = cv2.warpAffine(img, transform, (ow, oh))
 
-    # get heatmaps
-    def gaussian_2d(shape, centre, sigma=1.0):
-        """Generate heatmap with single 2D gaussian."""
-        xs = np.arange(0.5, shape[1] + 0.5, step=1.0, dtype=np.float32)
-        ys = np.expand_dims(np.arange(0.5, shape[0] + 0.5, step=1.0, dtype=np.float32), -1)
-        alpha = -0.5 / (sigma ** 2)
-        heatmap = np.exp(alpha * ((xs - centre[0]) ** 2 + (ys - centre[1]) ** 2))
-        return heatmap
+    # Normalize eye image
+    eye = eye.astype(np.float32)
+    eye *= 2.0 / 255.0
+    eye -= 1.0
 
-    heatmaps = get_heatmaps((oh, ow), iris_landmarks, transform)
-    heatmaps = np.array([cv2.resize(x, (heatmap_w, heatmap_h)) for x in heatmaps])
+    # Gaze
+    # Convert look vector to gaze direction in polar angles
+    look_vec = np.array(eval(json_data['eye_details']['look_vec']))[:3]
+    look_vec[0] = -look_vec[0]
+    original_gaze = util.gaze.vector_to_pitchyaw(look_vec.reshape((1, 3))).flatten()
+    gaze = util.gaze.vector_to_pitchyaw(look_vec.reshape((1, 3))).flatten()
+    if gaze[1] > 0.0:
+        gaze[1] = np.pi - gaze[1]
+    elif gaze[1] < 0.0:
+        gaze[1] = -(np.pi + gaze[1])
+    gaze = gaze.astype(np.float32)
+
+    iris_centre = np.asarray([
+        iw_2 + original_eyeball_radius * -np.cos(original_gaze[0]) * np.sin(original_gaze[1]),
+        ih_2 + original_eyeball_radius * -np.sin(original_gaze[0]),
+    ])
+    landmarks = np.concatenate([interior_landmarks[::2, :2],  # 8
+                                iris_landmarks[::4, :2],  # 8
+                                iris_centre.reshape((1, 2)),
+                                [[iw_2, ih_2]],  # Eyeball centre
+                                ])  # 18 in total
+    landmarks = np.asmatrix(np.pad(landmarks, ((0, 0), (0, 1)), 'constant', constant_values=1))
+    landmarks = np.asarray(landmarks * transform.T)
+    landmarks = landmarks.astype(np.float32)
+
+    heatmaps = get_heatmaps((oh, ow), landmarks)
+    heatmaps = np.array([cv2.resize(x, (heatmap_w, heatmap_h), interpolation=cv2.INTER_CUBIC) for x in heatmaps])
 
     return {
         'img': eye,
@@ -58,11 +81,13 @@ def preprocess_unityeyes_image(img, json_data, oh=90, ow=150, heatmap_h=45, heat
         'radius': radius,
         'original_radius': original_eyeball_radius,
         'eye_middle': eye_middle,
-        'heatmaps': heatmaps
+        'heatmaps': heatmaps,
+        'landmarks': landmarks,
+        'gaze': gaze
     }
 
 
-def get_heatmaps(shape, iris_landmarks, transform):
+def get_heatmaps(shape, landmarks):
 
     def gaussian_2d(shape, centre, sigma=1.0):
         """Generate heatmap with single 2D gaussian."""
@@ -73,7 +98,16 @@ def get_heatmaps(shape, iris_landmarks, transform):
         return heatmap
 
     heatmaps = []
-    for (x, y, z) in iris_landmarks:
-        x, y = np.matmul(transform, [x, y, 1.0])
-        heatmaps.append(gaussian_2d(shape, (int(x), int(y)), sigma=5.0))
+    for (x, y) in landmarks:
+        heatmaps.append(gaussian_2d(shape, (int(x), int(y)), sigma=3.0))
     return heatmaps
+
+
+# get heatmaps
+def gaussian_2d(shape, centre, sigma=1.0):
+    """Generate heatmap with single 2D gaussian."""
+    xs = np.arange(0.5, shape[1] + 0.5, step=1.0, dtype=np.float32)
+    ys = np.expand_dims(np.arange(0.5, shape[0] + 0.5, step=1.0, dtype=np.float32), -1)
+    alpha = -0.5 / (sigma ** 2)
+    heatmap = np.exp(alpha * ((xs - centre[1]) ** 2 + (ys - centre[0]) ** 2))
+    return heatmap

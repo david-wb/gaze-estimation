@@ -48,6 +48,10 @@ class PoseNet(nn.Module):
         self.nstack = nstack
         self.heatmapLoss = HeatmapLoss()
 
+        self.landmarks_fc1 = nn.Linear(45*75, 100)
+        self.landmarks_fc2 = nn.Linear(100, 2)
+        self.landmarks_loss = nn.MSELoss()
+
     def forward(self, imgs):
         ## our posenet
         x = imgs.permute(0, 3, 1, 2)  # x of size 1,3,inpdim,inpdim
@@ -61,11 +65,21 @@ class PoseNet(nn.Module):
             combined_hm_preds.append(preds)
             if i < self.nstack - 1:
                 x = x + self.merge_preds[i](preds) + self.merge_features[i](feature)
-        return torch.stack(combined_hm_preds, 1)
 
-    def calc_loss(self, combined_hm_preds, heatmaps):
+        heatmaps_output = torch.stack(combined_hm_preds, 1)
+
+        # x = N x 18 x 45 x 75
+        x = torch.flatten(preds, start_dim=2)
+        x = self.landmarks_fc1(x) # N x 18 x 100
+        landmarks_out = self.landmarks_fc2(x) # N x 18 x 2
+
+        return torch.stack(combined_hm_preds, 1), landmarks_out
+
+    def calc_loss(self, combined_hm_preds, heatmaps, landmarks_pred, landmarks):
         combined_loss = []
         for i in range(self.nstack):
-            combined_loss.append(self.heatmapLoss(combined_hm_preds[0][i, :], heatmaps))
+            combined_loss.append(self.heatmapLoss(combined_hm_preds[:, i, :], heatmaps))
         combined_loss = torch.stack(combined_loss, dim=1)
-        return combined_loss
+        landmarks_loss = self.landmarks_loss(landmarks_pred, landmarks)
+
+        return combined_loss + landmarks_loss

@@ -6,6 +6,7 @@ import os
 from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
 import numpy as np
+import cv2
 
 # default `log_dir` is "runs" - we'll be more specific here
 timestr = datetime.now().strftime("%m-%d-Y-%H-%M-%S")
@@ -23,7 +24,7 @@ dataloader = DataLoader(train_set, batch_size=4,
 valDataLoader = DataLoader(val_set, batch_size=4,
                         shuffle=True, num_workers=8)
 
-posenet = PoseNet(nstack=8, inp_dim=256, oup_dim=32)
+posenet = PoseNet(nstack=8, inp_dim=256, oup_dim=18)
 
 # Use the optim package to define an Optimizer that will update the weights of
 # the model for us. Here we will use Adam; the optim package contains many other
@@ -49,13 +50,18 @@ for i_batch, sample_batched in enumerate(dataloader):
           len(sample_batched['heatmaps']))
 
     X = torch.tensor(sample_batched['img'], dtype=torch.float32)
-    Y = sample_batched['heatmaps']
-    Yp = posenet.forward(X)
+    heatmaps_pred, landmarks_pred = posenet.forward(X)
 
-    loss = torch.mean(posenet.calc_loss(Yp, Y))
+    heatmaps = sample_batched['heatmaps']
+    landmarks = torch.tensor(sample_batched['landmarks'], dtype=torch.float32)
+
+    loss = torch.sum(posenet.calc_loss(heatmaps_pred, heatmaps, landmarks_pred, landmarks))
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
+
+    cv2.imwrite('true.jpg', heatmaps[-1, 0, :].detach().numpy() * 255)
+    cv2.imwrite('pred.jpg', heatmaps_pred[-1, -1, 0, :].detach().numpy() * 255)
 
     print(i_batch, 'training loss', loss.item())
     writer.add_scalar("training loss", 1000 * loss.item(), i_batch)
@@ -65,9 +71,10 @@ for i_batch, sample_batched in enumerate(dataloader):
             val_losses = []
             for val_batch in valDataLoader:
                 X = torch.tensor(val_batch['img'], dtype=torch.float32)
-                Y = val_batch['heatmaps']
-                Yp = posenet.forward(X)
-                loss = torch.mean(posenet.calc_loss(Yp, Y))
+                landmarks = val_batch['heatmaps']
+                landmarks = val_batch['landmarks']
+                heatmaps_pred, landmarks_pred = posenet.forward(X)
+                loss = torch.sum(posenet.calc_loss(heatmaps_pred, heatmaps, landmarks_pred, landmarks))
                 val_losses.append(loss.item())
             val_loss = np.mean(val_losses)
             writer.add_scalar("validation loss", 1000 * val_loss, i_batch)

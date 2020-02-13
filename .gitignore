@@ -4,3 +4,5 @@ __pycache__/
 *.zip
 runs/
 checkpoint
+*.jpg
+.ipynb_checkpoints

@@ -9,5 +9,5 @@ class HeatmapLoss(torch.nn.Module):
 
     def forward(self, pred, gt):
         l = ((pred - gt)**2)
-        l = l.mean(dim=3).mean(dim=2).mean(dim=1)
+        l = torch.mean(l, dim=(1,2,3))
         return l ## l of dim bsize
