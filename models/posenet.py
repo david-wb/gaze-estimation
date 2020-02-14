@@ -78,7 +78,8 @@ class PoseNet(nn.Module):
         combined_loss = []
         for i in range(self.nstack):
             combined_loss.append(self.heatmapLoss(combined_hm_preds[:, i, :], heatmaps))
-        combined_loss = torch.stack(combined_loss, dim=1)
+
+        heatmap_loss = torch.stack(combined_loss, dim=1)
         landmarks_loss = self.landmarks_loss(landmarks_pred, landmarks)
 
-        return combined_loss + landmarks_loss
+        return torch.sum(heatmap_loss), landmarks_loss

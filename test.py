@@ -37,7 +37,7 @@ def normalize_predictions(preds):
 
 
 with torch.no_grad():
-    posenet = PoseNet(nstack=8, inp_dim=256, oup_dim=32)
+    posenet = PoseNet(nstack=8, inp_dim=256, oup_dim=18)
 
     if os.path.exists('checkpoint'):
         checkpoint = torch.load('checkpoint')
@@ -46,23 +46,23 @@ with torch.no_grad():
     sample = dataset[0]
     x = torch.tensor([sample['img']], dtype=torch.float32)
     y = sample['heatmaps']
-    yp = posenet.forward(x)
+    yp, landmarks_pred = posenet.forward(x)
 
     heatmaps = yp.numpy()[0, -1, :]
     heatmaps = [cv2.resize(x, (150, 90)) for x in heatmaps]
-    heatmaps = list(normalize_predictions(heatmaps))
+    landmarks = landmarks_pred.numpy()[0, :]
 
-    centers = [centroid(x) for x in heatmaps]
-    result = [gaussian_2d((90, 150), centre=tuple(int(e) for e in c), sigma=3) for c in centers]
+    #centers = [centroid(x) for x in heatmaps]
+    result = [gaussian_2d(w=75, h=45, cx=c[1], cy=c[0], sigma=3) for c in landmarks]
 
     plt.figure(figsize=(12, 3))
 
     plt.subplot(141)
-    plt.imshow(cv2.cvtColor(sample['full_img'], cv2.COLOR_BGR2RGB))
+    plt.imshow(sample['full_img'])
     plt.subplot(142)
     plt.imshow(sample['img'])
     plt.subplot(143)
-    plt.imshow(np.sum(y, axis=0), cmap='gray')
+    plt.imshow(np.mean(y[8:16], axis=0), cmap='gray')
     plt.subplot(144)
-    plt.imshow(np.mean(result, axis=0), cmap='gray')
+    plt.imshow(np.mean(result[8:16], axis=0), cmap='gray')
     plt.show()

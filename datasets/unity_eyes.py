@@ -29,6 +29,7 @@ class UnityEyesDataset(Dataset):
             idx = idx.tolist()
 
         full_img = cv2.imread(self.img_paths[idx])
+        full_img = cv2.cvtColor(full_img, cv2.COLOR_BGR2RGB)
         with open(self.json_paths[idx]) as f:
             json_data = json.load(f)
 

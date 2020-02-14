@@ -43,8 +43,7 @@ def preprocess_unityeyes_image(img, json_data, oh=90, ow=150, heatmap_h=45, heat
 
     # Normalize eye image
     eye = eye.astype(np.float32)
-    eye *= 2.0 / 255.0
-    eye -= 1.0
+    eye = eye / 255.0
 
     # Gaze
     # Convert look vector to gaze direction in polar angles
@@ -67,12 +66,21 @@ def preprocess_unityeyes_image(img, json_data, oh=90, ow=150, heatmap_h=45, heat
                                 iris_centre.reshape((1, 2)),
                                 [[iw_2, ih_2]],  # Eyeball centre
                                 ])  # 18 in total
+
     landmarks = np.asmatrix(np.pad(landmarks, ((0, 0), (0, 1)), 'constant', constant_values=1))
-    landmarks = np.asarray(landmarks * transform.T)
+    landmarks = np.asarray(landmarks * transform.T) * np.array([heatmap_w/ow, heatmap_h/oh])
     landmarks = landmarks.astype(np.float32)
 
-    heatmaps = get_heatmaps((oh, ow), landmarks)
-    heatmaps = np.array([cv2.resize(x, (heatmap_w, heatmap_h), interpolation=cv2.INTER_CUBIC) for x in heatmaps])
+    # Swap columns so that landmarks are in (y, x), not (x, y)
+    # This is because the network outputs landmarks as (y, x) values.
+    temp = np.zeros((18, 2), dtype=np.float32)
+    temp[:, 0] = landmarks[:, 1]
+    temp[:, 1] = landmarks[:, 0]
+    landmarks = temp
+
+    heatmaps = get_heatmaps(w=heatmap_w, h=heatmap_h, landmarks=landmarks)
+
+    assert heatmaps.shape == (18, heatmap_h, heatmap_w)
 
     return {
         'img': eye,
@@ -87,27 +95,21 @@ def preprocess_unityeyes_image(img, json_data, oh=90, ow=150, heatmap_h=45, heat
     }
 
 
-def get_heatmaps(shape, landmarks):
-
-    def gaussian_2d(shape, centre, sigma=1.0):
-        """Generate heatmap with single 2D gaussian."""
-        xs = np.arange(0.5, shape[1] + 0.5, step=1.0, dtype=np.float32)
-        ys = np.expand_dims(np.arange(0.5, shape[0] + 0.5, step=1.0, dtype=np.float32), -1)
-        alpha = -0.5 / (sigma ** 2)
-        heatmap = np.exp(alpha * ((xs - centre[0]) ** 2 + (ys - centre[1]) ** 2))
-        return heatmap
-
-    heatmaps = []
-    for (x, y) in landmarks:
-        heatmaps.append(gaussian_2d(shape, (int(x), int(y)), sigma=3.0))
-    return heatmaps
-
-
-# get heatmaps
-def gaussian_2d(shape, centre, sigma=1.0):
+def gaussian_2d(w, h, cx, cy, sigma=1.0):
     """Generate heatmap with single 2D gaussian."""
-    xs = np.arange(0.5, shape[1] + 0.5, step=1.0, dtype=np.float32)
-    ys = np.expand_dims(np.arange(0.5, shape[0] + 0.5, step=1.0, dtype=np.float32), -1)
+    xs, ys = np.meshgrid(
+        np.linspace(0, w - 1, w, dtype=np.float32),
+        np.linspace(0, h - 1, h, dtype=np.float32)
+    )
+
+    assert xs.shape == (h, w)
     alpha = -0.5 / (sigma ** 2)
-    heatmap = np.exp(alpha * ((xs - centre[1]) ** 2 + (ys - centre[0]) ** 2))
+    heatmap = np.exp(alpha * ((xs - cx) ** 2 + (ys - cy) ** 2))
     return heatmap
+
+
+def get_heatmaps(w, h, landmarks):
+    heatmaps = []
+    for (y, x) in landmarks:
+        heatmaps.append(gaussian_2d(w, h, cx=x, cy=y, sigma=3.0))
+    return np.array(heatmaps)
