@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 
 
-def softargmax2d(input, beta=100):
+def softargmax2d(input, beta=100, dtype=torch.float32):
     *_, h, w = input.shape
 
     input = input.reshape(*_, h * w)
@@ -23,7 +23,7 @@ def softargmax2d(input, beta=100):
 
     result = torch.stack([result_r, result_c], dim=-1)
 
-    return result
+    return result.type(dtype)
 
 
 def softargmax1d(input, beta=100):

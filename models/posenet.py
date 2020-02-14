@@ -2,6 +2,7 @@ import torch
 from torch import nn
 from models.layers import Conv, Hourglass, Pool, Residual
 from task.loss import HeatmapLoss
+from util.softargmax import softargmax2d
 
 
 class UnFlatten(nn.Module):
@@ -66,14 +67,12 @@ class PoseNet(nn.Module):
             if i < self.nstack - 1:
                 x = x + self.merge_preds[i](preds) + self.merge_features[i](feature)
 
-        heatmaps_output = torch.stack(combined_hm_preds, 1)
+        heatmaps_out = torch.stack(combined_hm_preds, 1)
 
-        # x = N x 18 x 45 x 75
-        x = torch.flatten(preds, start_dim=2)
-        x = self.landmarks_fc1(x) # N x 18 x 100
-        landmarks_out = self.landmarks_fc2(x) # N x 18 x 2
+        # preds = N x 18 x 45 x 75
+        landmarks_out = softargmax2d(preds)  # N x 18 x 2
 
-        return torch.stack(combined_hm_preds, 1), landmarks_out
+        return heatmaps_out, landmarks_out
 
     def calc_loss(self, combined_hm_preds, heatmaps, landmarks_pred, landmarks):
         combined_loss = []
