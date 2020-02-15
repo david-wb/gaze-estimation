@@ -8,7 +8,7 @@ from datetime import datetime
 import numpy as np
 import cv2
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device('cpu') #torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 
 # default `log_dir` is "runs" - we'll be more specific here
@@ -23,12 +23,11 @@ TN = N - VN
 train_set, val_set = torch.utils.data.random_split(dataset, (TN, VN))
 
 dataloader = DataLoader(train_set, batch_size=4,
-                        shuffle=True, num_workers=8)
+                        shuffle=True)
 valDataLoader = DataLoader(val_set, batch_size=4,
-                        shuffle=True, num_workers=8)
+                        shuffle=True)
 
 posenet = PoseNet(nstack=8, inp_dim=256, oup_dim=18)
-posenet.to(device)
 
 # Use the optim package to define an Optimizer that will update the weights of
 # the model for us. Here we will use Adam; the optim package contains many other
@@ -36,14 +35,16 @@ posenet.to(device)
 # optimizer which Tensors it should update.
 learning_rate = 1e-4
 optimizer = torch.optim.Adam(posenet.parameters(), lr=learning_rate)
-
-
 if os.path.exists('checkpoint'):
     checkpoint = torch.load('checkpoint')
     posenet.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
+#posenet.to(device)
+print('starting training')
+
 for i_batch, sample_batched in enumerate(dataloader):
+    print(i_batch)
     if i_batch % 20 == 0:
         torch.save({
             'model_state_dict': posenet.state_dict(),
@@ -53,7 +54,7 @@ for i_batch, sample_batched in enumerate(dataloader):
     print(i_batch, sample_batched['img'].size(),
           len(sample_batched['heatmaps']))
 
-    X = torch.tensor(sample_batched['img'], dtype=torch.float32).to(device)
+    X = torch.tensor(sample_batched['img'], dtype=torch.float32)
     heatmaps_pred, landmarks_pred = posenet.forward(X)
 
     heatmaps = sample_batched['heatmaps']

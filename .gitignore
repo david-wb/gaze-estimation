@@ -1,8 +1,10 @@
 datasets/UnityEyes/imgs/
 __pycache__/
-.idea/
-*.zip
 runs/
-checkpoint
-*.jpg
+.idea/
 .ipynb_checkpoints
+*.zip
+*.jpg
+*.dat
+checkpoint*
+*.bz2

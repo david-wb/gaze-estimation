@@ -9,13 +9,18 @@ import numpy as np
 import cv2
 from util.preprocess import gaussian_2d
 from matplotlib import pyplot as plt
-from scipy.ndimage.measurements import center_of_mass
 
 # default `log_dir` is "runs" - we'll be more specific here
 timestr = datetime.now().strftime("%m-%d-Y-%H-%M-%S")
 writer = SummaryWriter(f'runs/posenet')
 
 dataset = UnityEyesDataset()
+N = len(dataset)
+
+VN = 100
+TN = N - VN
+train_set, val_set = torch.utils.data.random_split(dataset, (TN, VN))
+
 
 
 def centroid(img):
@@ -43,7 +48,7 @@ with torch.no_grad():
         checkpoint = torch.load('checkpoint')
         posenet.load_state_dict(checkpoint['model_state_dict'])
 
-    sample = dataset[0]
+    sample = train_set[0]
     x = torch.tensor([sample['img']], dtype=torch.float32)
     y = sample['heatmaps']
     yp, landmarks_pred = posenet.forward(x)

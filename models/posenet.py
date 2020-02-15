@@ -59,7 +59,7 @@ class PoseNet(nn.Module):
         x = self.pre(x)
 
         combined_hm_preds = []
-        for i in range(self.nstack):
+        for i in torch.arange(self.nstack):
             hg = self.hgs[i](x)
             feature = self.features[i](hg)
             preds = self.outs[i](feature)
