@@ -1,21 +1,15 @@
-from time import sleep
-
 import torch
-from datasets.unity_eyes import UnityEyesDataset
-from torch.utils.data import DataLoader
+from torch.nn import DataParallel
+
 from models.posenet import PoseNet
 import os
-from torch.utils.tensorboard import SummaryWriter
-from datetime import datetime
 import numpy as np
 import cv2
-from util.preprocess import gaussian_2d
-from matplotlib import pyplot as plt
 import dlib
 import imutils
 from imutils import face_utils
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device('cpu') #torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 
 webcam = cv2.VideoCapture(0)
@@ -30,6 +24,7 @@ if os.path.exists('checkpoint_copy'):
     checkpoint = torch.load('checkpoint_copy')
     posenet.load_state_dict(checkpoint['model_state_dict'])
 
+posenet = posenet.to(device)
 
 def main():
     current_face = None
@@ -158,8 +153,8 @@ def run_posenet(eyes, ow=150, oh=90):
     imgs = [eye['image'] for eye in eyes]
 
     with torch.no_grad():
-        x = torch.tensor(imgs, dtype=torch.float32)
-        yp, landmarks_pred = posenet.forward(x)
+        x = torch.tensor(imgs, dtype=torch.float32).to(device)
+        heatmaps_pred, landmarks_pred = posenet.forward(x)
         landmarks = landmarks_pred.numpy()
         assert landmarks.shape == (2, 18, 2)
         result = []
