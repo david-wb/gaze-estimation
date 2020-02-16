@@ -71,7 +71,8 @@ def main():
             else:
                 eye_landmarks = next_eye_landmarks
             for (x, y) in eye_landmarks:
-                cv2.circle(orig_frame, (int(round(x[0][0])), int(round(y[0][0]))), 1, (0, 255, 0), -1)
+                cv2.circle(orig_frame,
+                           (int(round(x[0][0])), int(round(y[0][0]))), 2, (0, 255, 0), -1, lineType=cv2.LINE_AA)
 
         cv2.imshow("Webcam", orig_frame)
         cv2.waitKey(1)
@@ -93,7 +94,7 @@ def draw_cascade_face(face, frame):
 
 def draw_landmarks(landmarks, frame):
     for (x, y) in landmarks:
-        cv2.circle(frame, (int(x), int(y)), 2, (0, 255, 0), -1)
+        cv2.circle(frame, (int(x), int(y)), 2, (0, 255, 0), -1, lineType=cv2.LINE_AA)
 
 
 def segment_eyes(frame, landmarks, ow=150, oh=90):
