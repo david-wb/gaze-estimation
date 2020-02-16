@@ -7,8 +7,9 @@ from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
 import numpy as np
 import cv2
+torch.backends.cudnn.enabled = False
 
-device = torch.device('cpu') #torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 
 # default `log_dir` is "runs" - we'll be more specific here
@@ -27,7 +28,7 @@ dataloader = DataLoader(train_set, batch_size=4,
 valDataLoader = DataLoader(val_set, batch_size=4,
                         shuffle=True)
 
-posenet = PoseNet(nstack=8, inp_dim=256, oup_dim=18)
+posenet = PoseNet(nstack=8, inp_dim=128, oup_dim=18).to(device)
 
 # Use the optim package to define an Optimizer that will update the weights of
 # the model for us. Here we will use Adam; the optim package contains many other
@@ -40,7 +41,6 @@ if os.path.exists('checkpoint'):
     posenet.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
-#posenet.to(device)
 print('starting training')
 
 for i_batch, sample_batched in enumerate(dataloader):
@@ -54,11 +54,11 @@ for i_batch, sample_batched in enumerate(dataloader):
     print(i_batch, sample_batched['img'].size(),
           len(sample_batched['heatmaps']))
 
-    X = torch.tensor(sample_batched['img'], dtype=torch.float32)
+    X = sample_batched['img'].float().to(device)
     heatmaps_pred, landmarks_pred = posenet.forward(X)
 
-    heatmaps = sample_batched['heatmaps']
-    landmarks = torch.tensor(sample_batched['landmarks'], dtype=torch.float32)
+    heatmaps = sample_batched['heatmaps'].to(device)
+    landmarks = sample_batched['landmarks'].float().to(device)
 
     heatmaps_loss, landmarks_loss = posenet.calc_loss(heatmaps_pred, heatmaps, landmarks_pred, landmarks)
 
@@ -68,14 +68,15 @@ for i_batch, sample_batched in enumerate(dataloader):
     loss.backward()
     optimizer.step()
 
-    hm = np.mean(heatmaps[-1, 8:16].detach().numpy(), axis=0)
-    hm_pred = np.mean(heatmaps_pred[-1, -1, 8:16].detach().numpy(), axis=0)
+    hm = np.mean(heatmaps[-1, 8:16].cpu().detach().numpy(), axis=0)
+    hm_pred = np.mean(heatmaps_pred[-1, -1, 8:16].cpu().detach().numpy(), axis=0)
     norm_hm = cv2.normalize(hm, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
     norm_hm_pred = cv2.normalize(hm_pred, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
 
-    cv2.imwrite('true.jpg', norm_hm * 255)
-    cv2.imwrite('pred.jpg', norm_hm_pred * 255)
-    cv2.imwrite('eye.jpg', sample_batched['img'].numpy()[-1] * 255)
+    if i_batch % 20 == 0:
+        cv2.imwrite('true.jpg', norm_hm * 255)
+        cv2.imwrite('pred.jpg', norm_hm_pred * 255)
+        cv2.imwrite('eye.jpg', sample_batched['img'].numpy()[-1] * 255)
 
     writer.add_scalar("Training heatmaps loss", heatmaps_loss.item(), i_batch)
     writer.add_scalar("Training landmarks loss", landmarks_loss.item(), i_batch)
@@ -85,15 +86,15 @@ for i_batch, sample_batched in enumerate(dataloader):
         with torch.no_grad():
             val_losses = []
             for val_batch in valDataLoader:
-                X = torch.tensor(val_batch['img'], dtype=torch.float32)
-                landmarks = val_batch['heatmaps']
-                landmarks = val_batch['landmarks']
+                X = torch.tensor(val_batch['img'], dtype=torch.float32).to(device)
+                heatmaps =  val_batch['heatmaps'].to(device)
+                landmarks = val_batch['landmarks'].to(device)
                 heatmaps_pred, landmarks_pred = posenet.forward(X)
                 heatmaps_loss, landmarks_loss = posenet.calc_loss(heatmaps_pred, heatmaps, landmarks_pred, landmarks)
                 loss = 1000 * heatmaps_loss + landmarks_loss
                 val_losses.append(loss.item())
             val_loss = np.mean(val_losses)
-            writer.add_scalar("validation loss", 1000 * val_loss, i_batch)
+            writer.add_scalar("validation loss", val_loss, i_batch)
         print(i_batch, 'validation loss', val_loss)
 
 

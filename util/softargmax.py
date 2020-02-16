@@ -18,6 +18,11 @@ def softargmax2d(input, beta=100, dtype=torch.float32):
     indices_r = torch.tensor(np.reshape(indices_r, (-1, h * w)))
     indices_c = torch.tensor(np.reshape(indices_c, (-1, h * w)))
 
+    device = input.get_device()
+    if device >= 0:
+        indices_r = indices_r.to(device)
+        indices_c = indices_c.to(device)
+
     result_r = torch.sum((h - 1) * input * indices_r, dim=-1)
     result_c = torch.sum((w - 1) * input * indices_c, dim=-1)
 

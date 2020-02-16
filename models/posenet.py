@@ -48,9 +48,6 @@ class PoseNet(nn.Module):
         self.merge_preds = nn.ModuleList([Merge(oup_dim, inp_dim) for i in range(nstack - 1)])
         self.nstack = nstack
         self.heatmapLoss = HeatmapLoss()
-
-        self.landmarks_fc1 = nn.Linear(45*75, 100)
-        self.landmarks_fc2 = nn.Linear(100, 2)
         self.landmarks_loss = nn.MSELoss()
 
     def forward(self, imgs):

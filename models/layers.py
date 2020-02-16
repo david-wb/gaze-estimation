@@ -75,8 +75,6 @@ class Hourglass(nn.Module):
             self.low2 = Residual(nf, nf)
         self.low3 = Residual(nf, f)
 
-        #self.up2 = nn.Upsample(scale_factor=2, mode='nearest')
-
     def forward(self, x):
         up1 = self.up1(x)
         pool1 = self.pool1(x)

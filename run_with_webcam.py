@@ -9,7 +9,7 @@ import dlib
 import imutils
 from imutils import face_utils
 
-device = torch.device('cpu') #torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 
 webcam = cv2.VideoCapture(0)
