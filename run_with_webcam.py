@@ -8,6 +8,7 @@ import cv2
 import dlib
 import imutils
 from imutils import face_utils
+torch.backends.cudnn.enabled = True
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
@@ -18,24 +19,24 @@ dirname = os.path.dirname(__file__)
 face_cascade = cv2.CascadeClassifier(os.path.join(dirname, 'lbpcascade_frontalface_improved.xml'))
 landmarks_detector = dlib.shape_predictor(os.path.join(dirname, 'shape_predictor_5_face_landmarks.dat'))
 
-posenet = PoseNet(nstack=8, inp_dim=256, oup_dim=18)
+posenet = PoseNet(nstack=8, inp_dim=128, oup_dim=18)
 
-if os.path.exists('checkpoint_copy'):
-    checkpoint = torch.load('checkpoint_copy')
-    posenet.load_state_dict(checkpoint['model_state_dict'])
+checkpoint = torch.load('checkpoint')
+posenet.load_state_dict(checkpoint['model_state_dict'])
 
 posenet = posenet.to(device)
 
 def main():
     current_face = None
     landmarks = None
+    eye_landmarks = None
     alpha = 0.5
 
     while True:
-        _, frame = webcam.read()
-        #frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frame = imutils.resize(frame, width=800)
-        orig_frame = cv2.UMat(frame.copy())
+        _, frame_bgr = webcam.read()
+        frame_bgr = imutils.resize(frame_bgr, width=800)
+        orig_frame = cv2.UMat(frame_bgr.copy())
+        frame = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
         frame = cv2.UMat(frame)
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         faces = face_cascade.detectMultiScale(gray)
@@ -50,7 +51,7 @@ def main():
                 current_face = next_face
 
         if current_face is not None:
-            draw_cascade_face(current_face, frame)
+            #draw_cascade_face(current_face, frame)
             next_landmarks = detect_landmarks(current_face, gray)
 
             if landmarks is not None:
@@ -60,13 +61,18 @@ def main():
 
             #draw_landmarks(landmarks, frame)
 
+
         if landmarks is not None:
             eyes = segment_eyes(orig_frame.get(), landmarks)
-            eye_landmarks = run_posenet(eyes)
+            next_eye_landmarks = run_posenet(eyes)
+            if eye_landmarks is not None:
+                eye_landmarks = alpha * next_eye_landmarks + (1 - alpha) * eye_landmarks
+            else:
+                eye_landmarks = next_eye_landmarks
             for (x, y) in eye_landmarks:
-                cv2.circle(frame, (int(x), int(y)), 2, (0, 255, 0), -1)
+                cv2.circle(orig_frame, (int(round(x[0][0])), int(round(y[0][0]))), 1, (0, 255, 0), -1)
 
-        cv2.imshow("Webcam", frame)
+        cv2.imshow("Webcam", orig_frame)
         cv2.waitKey(1)
 
 
@@ -155,7 +161,7 @@ def run_posenet(eyes, ow=150, oh=90):
     with torch.no_grad():
         x = torch.tensor(imgs, dtype=torch.float32).to(device)
         heatmaps_pred, landmarks_pred = posenet.forward(x)
-        landmarks = landmarks_pred.numpy()
+        landmarks = landmarks_pred.cpu().numpy()
         assert landmarks.shape == (2, 18, 2)
         result = []
         for i, landmarks in enumerate(landmarks):
@@ -167,8 +173,8 @@ def run_posenet(eyes, ow=150, oh=90):
                 if eye['side'] == 'left':
                     x = ow - x
                 (x, y, _) = np.matmul(eye['transform_inv'], np.array([[x], [y], [1.0]]))
-                result.append((x, y))
-        return result
+                result.append((x[0][0], y[0][0]))
+        return np.array(result)
 
 
 if __name__ == '__main__':
