@@ -26,7 +26,7 @@ train_set, val_set = torch.utils.data.random_split(dataset, (TN, VN))
 
 
 with torch.no_grad():
-    posenet = PoseNet(nstack=8, inp_dim=128, oup_dim=18).to(device)
+    posenet = PoseNet(nstack=4, inp_dim=64, oup_dim=18).to(device)
 
     if os.path.exists('checkpoint'):
         checkpoint = torch.load('checkpoint')

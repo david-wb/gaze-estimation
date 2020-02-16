@@ -19,9 +19,9 @@ dirname = os.path.dirname(__file__)
 face_cascade = cv2.CascadeClassifier(os.path.join(dirname, 'lbpcascade_frontalface_improved.xml'))
 landmarks_detector = dlib.shape_predictor(os.path.join(dirname, 'shape_predictor_5_face_landmarks.dat'))
 
-posenet = PoseNet(nstack=8, inp_dim=128, oup_dim=18)
+posenet = PoseNet(nstack=4, inp_dim=64, oup_dim=18)
 
-checkpoint = torch.load('checkpoint')
+checkpoint = torch.load('checkpoint_g')
 posenet.load_state_dict(checkpoint['model_state_dict'])
 
 posenet = posenet.to(device)
@@ -30,7 +30,8 @@ def main():
     current_face = None
     landmarks = None
     eye_landmarks = None
-    alpha = 0.5
+    alpha = 0.97
+    eye_smoothing = 0.5
 
     while True:
         _, frame_bgr = webcam.read()
@@ -66,7 +67,7 @@ def main():
             eyes = segment_eyes(orig_frame.get(), landmarks)
             next_eye_landmarks = run_posenet(eyes)
             if eye_landmarks is not None:
-                eye_landmarks = alpha * next_eye_landmarks + (1 - alpha) * eye_landmarks
+                eye_landmarks = eye_smoothing * next_eye_landmarks + (1 - eye_smoothing) * eye_landmarks
             else:
                 eye_landmarks = next_eye_landmarks
             for (x, y) in eye_landmarks:

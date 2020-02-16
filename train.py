@@ -28,7 +28,7 @@ dataloader = DataLoader(train_set, batch_size=4,
 valDataLoader = DataLoader(val_set, batch_size=4,
                         shuffle=True)
 
-posenet = PoseNet(nstack=8, inp_dim=128, oup_dim=18).to(device)
+posenet = PoseNet(nstack=4, inp_dim=64, oup_dim=18).to(device)
 
 # Use the optim package to define an Optimizer that will update the weights of
 # the model for us. Here we will use Adam; the optim package contains many other
