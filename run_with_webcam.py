@@ -1,3 +1,5 @@
+from typing import List
+
 import torch
 from torch.nn import DataParallel
 
@@ -7,7 +9,12 @@ import numpy as np
 import cv2
 import dlib
 import imutils
+import util.gaze
 from imutils import face_utils
+
+from util.eye_prediction import EyePrediction
+from util.eye_sample import EyeSample
+
 torch.backends.cudnn.enabled = True
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -32,11 +39,12 @@ def main():
     eye_landmarks = None
     alpha = 0.97
     eye_smoothing = 0.5
+    eye_predictions = []
 
     while True:
         _, frame_bgr = webcam.read()
         frame_bgr = imutils.resize(frame_bgr, width=800)
-        orig_frame = cv2.UMat(frame_bgr.copy())
+        orig_frame = frame_bgr.copy()
         frame = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
         frame = cv2.UMat(frame)
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -64,15 +72,25 @@ def main():
 
 
         if landmarks is not None:
-            eyes = segment_eyes(orig_frame.get(), landmarks)
-            next_eye_landmarks = run_posenet(eyes)
-            if eye_landmarks is not None:
-                eye_landmarks = eye_smoothing * next_eye_landmarks + (1 - eye_smoothing) * eye_landmarks
-            else:
-                eye_landmarks = next_eye_landmarks
-            for (x, y) in eye_landmarks:
-                cv2.circle(orig_frame,
-                           (int(round(x[0][0])), int(round(y[0][0]))), 2, (0, 255, 0), -1, lineType=cv2.LINE_AA)
+            eyes = segment_eyes(orig_frame, landmarks)
+            eye_predictions = run_posenet(eyes)
+
+            for ep in eye_predictions:
+                iris_center = ep.landmarks[-2]
+                eyeball_center = ep.landmarks[-1]
+                i_x0, i_y0 = iris_center
+                e_x0, e_y0 = eyeball_center
+                radius = ep.eye_sample.estimated_radius
+
+                theta = -np.arcsin(np.clip((i_y0 - e_y0) / radius, -1.0, 1.0))
+                phi = np.arcsin(np.clip((i_x0 - e_x0) / (radius * -np.cos(theta)),
+                                        -1.0, 1.0))
+                current_gaze = np.array([theta, phi])
+                util.gaze.draw_gaze(orig_frame, iris_center, current_gaze,
+                                    length=120.0, thickness=1)
+                for (x, y) in ep.landmarks[8:17]:
+                    cv2.circle(orig_frame,
+                               (int(round(x)), int(round(y))), 2, (0, 255, 0), -1, lineType=cv2.LINE_AA)
 
         cv2.imshow("Webcam", orig_frame)
         cv2.waitKey(1)
@@ -107,6 +125,8 @@ def segment_eyes(frame, landmarks, ow=150, oh=90):
         eye_width = 1.5 * np.linalg.norm(landmarks[corner1, :] - landmarks[corner2, :])
         if eye_width == 0.0:
             return eyes
+
+        estimated_radius = 1.5 * np.sqrt((x1 - x2)**2 + (y1 - y2)**2) / 2
 
         cx, cy = 0.5 * (x1 + x2), 0.5 * (y1 + y2)
 
@@ -148,35 +168,39 @@ def segment_eyes(frame, landmarks, ow=150, oh=90):
         eye_image = cv2.warpAffine(frame, transform_mat[:2, :], (ow, oh))
         if is_left:
             eye_image = np.fliplr(eye_image)
-        eyes.append({
-            'image': eye_image,
-            'transform_inv': inv_transform_mat,
-            'side': 'left' if is_left else 'right',
-        })
+
+        eyes.append(EyeSample(orig_img=frame.copy(),
+                              img=eye_image,
+                              transform_inv=inv_transform_mat,
+                              is_left=is_left,
+                              estimated_radius=estimated_radius))
     return eyes
 
 
-def run_posenet(eyes, ow=150, oh=90):
+def run_posenet(eyes: List[EyeSample], ow=150, oh=90) -> List[EyePrediction]:
+    result = []
+    for eye in eyes:
+        with torch.no_grad():
+            x = torch.tensor([eye.img], dtype=torch.float32).to(device)
+            _, landmarks = posenet.forward(x)
+            landmarks = np.asarray(landmarks.cpu().numpy()[0])
+            assert landmarks.shape == (18, 2)
 
-    imgs = [eye['image'] for eye in eyes]
+            landmarks = landmarks * np.array([oh/45, ow/75])
 
-    with torch.no_grad():
-        x = torch.tensor(imgs, dtype=torch.float32).to(device)
-        heatmaps_pred, landmarks_pred = posenet.forward(x)
-        landmarks = landmarks_pred.cpu().numpy()
-        assert landmarks.shape == (2, 18, 2)
-        result = []
-        for i, landmarks in enumerate(landmarks):
-            eye = eyes[i]
-
-            for (y, x) in landmarks[8:17]:
-                y = y*oh/45
-                x = x*ow/75
-                if eye['side'] == 'left':
-                    x = ow - x
-                (x, y, _) = np.matmul(eye['transform_inv'], np.array([[x], [y], [1.0]]))
-                result.append((x[0][0], y[0][0]))
-        return np.array(result)
+            temp = np.zeros((18, 3))
+            if eye.is_left:
+                temp[:, 0] = np.array(ow) - landmarks[:, 1]
+            else:
+                temp[:, 0] = landmarks[:, 1]
+            temp[:, 1] = landmarks[:, 0]
+            temp[:, 2] = 1.0
+            landmarks = temp
+            assert landmarks.shape == (18, 3)
+            landmarks = np.matmul(landmarks, eye.transform_inv.T)
+            assert landmarks.shape == (18, 3)
+            result.append(EyePrediction(eye_sample=eye, landmarks=np.asarray(landmarks[:, :2])))
+    return result
 
 
 if __name__ == '__main__':
