@@ -46,9 +46,14 @@ class PoseNet(nn.Module):
         self.outs = nn.ModuleList([Conv(inp_dim, oup_dim, 1, relu=False, bn=False) for i in range(nstack)])
         self.merge_features = nn.ModuleList([Merge(inp_dim, inp_dim) for i in range(nstack - 1)])
         self.merge_preds = nn.ModuleList([Merge(oup_dim, inp_dim) for i in range(nstack - 1)])
+
+        self.gaze_fc1 = nn.Linear(in_features=18*2, out_features=64)
+        self.gaze_fc2 = nn.Linear(in_features=64, out_features=2)
+
         self.nstack = nstack
         self.heatmapLoss = HeatmapLoss()
         self.landmarks_loss = nn.MSELoss()
+        self.gaze_loss = nn.MSELoss()
 
     def forward(self, imgs):
         ## our posenet
@@ -69,14 +74,21 @@ class PoseNet(nn.Module):
         # preds = N x 18 x 45 x 75
         landmarks_out = softargmax2d(preds)  # N x 18 x 2
 
-        return heatmaps_out, landmarks_out
+        # Gaze
+        gaze = landmarks_out.flatten(start_dim=1)
+        gaze = self.gaze_fc1(gaze)
+        gaze = nn.functional.relu(gaze)
+        gaze = self.gaze_fc2(gaze)
 
-    def calc_loss(self, combined_hm_preds, heatmaps, landmarks_pred, landmarks):
+        return heatmaps_out, landmarks_out, gaze
+
+    def calc_loss(self, combined_hm_preds, heatmaps, landmarks_pred, landmarks, gaze_pred, gaze):
         combined_loss = []
         for i in range(self.nstack):
             combined_loss.append(self.heatmapLoss(combined_hm_preds[:, i, :], heatmaps))
 
         heatmap_loss = torch.stack(combined_loss, dim=1)
         landmarks_loss = self.landmarks_loss(landmarks_pred, landmarks)
+        gaze_loss = self.gaze_loss(gaze_pred, gaze)
 
-        return torch.sum(heatmap_loss), landmarks_loss
+        return torch.sum(heatmap_loss), landmarks_loss, gaze_loss

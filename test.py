@@ -9,6 +9,7 @@ import numpy as np
 import cv2
 from util.preprocess import gaussian_2d
 from matplotlib import pyplot as plt
+from util.gaze import draw_gaze
 
 device = torch.device('cpu')
 print(device)
@@ -35,7 +36,7 @@ with torch.no_grad():
     sample = train_set[0]
     x = torch.tensor([sample['img']]).float().to(device)
     y = sample['heatmaps']
-    yp, landmarks_pred = posenet.forward(x)
+    yp, landmarks_pred, gaze_pred = posenet.forward(x)
 
     heatmaps = yp.cpu().numpy()[0, -1, :]
     heatmaps = [cv2.resize(x, (150, 90)) for x in heatmaps]
@@ -46,10 +47,19 @@ with torch.no_grad():
 
     plt.figure(figsize=(12, 3))
 
+    iris_center = landmarks[-2][::-1]
+
+    iris_center *= 2
+    img = sample['img']
+    cv2.circle(img, tuple(int(x) for x in iris_center), 2, (0, 255, 0), -1)
+
+    draw_gaze(img, iris_center, gaze_pred.cpu().numpy()[0, :], length=40)
+    draw_gaze(img, iris_center, sample['gaze'], length=80, color=(0, 255, 0))
+
     plt.subplot(141)
     plt.imshow(sample['full_img'])
     plt.subplot(142)
-    plt.imshow(sample['img'])
+    plt.imshow(img)
     plt.subplot(143)
     plt.imshow(np.mean(y[8:16], axis=0), cmap='gray')
     plt.subplot(144)

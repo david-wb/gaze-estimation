@@ -55,14 +55,16 @@ for i_batch, sample_batched in enumerate(dataloader):
           len(sample_batched['heatmaps']))
 
     X = sample_batched['img'].float().to(device)
-    heatmaps_pred, landmarks_pred = posenet.forward(X)
+    heatmaps_pred, landmarks_pred, gaze_pred = posenet.forward(X)
 
     heatmaps = sample_batched['heatmaps'].to(device)
     landmarks = sample_batched['landmarks'].float().to(device)
+    gaze = sample_batched['gaze'].float().to(device)
 
-    heatmaps_loss, landmarks_loss = posenet.calc_loss(heatmaps_pred, heatmaps, landmarks_pred, landmarks)
+    heatmaps_loss, landmarks_loss, gaze_loss = posenet.calc_loss(
+        heatmaps_pred, heatmaps, landmarks_pred, landmarks, gaze_pred, gaze)
 
-    loss = 1000 * heatmaps_loss + landmarks_loss
+    loss = 1000 * heatmaps_loss + landmarks_loss + gaze_loss
 
     optimizer.zero_grad()
     loss.backward()
@@ -80,6 +82,7 @@ for i_batch, sample_batched in enumerate(dataloader):
 
     writer.add_scalar("Training heatmaps loss", heatmaps_loss.item(), i_batch)
     writer.add_scalar("Training landmarks loss", landmarks_loss.item(), i_batch)
+    writer.add_scalar("Training gaze loss", gaze_loss.item(), i_batch)
     writer.add_scalar("Training loss", loss.item(), i_batch)
 
     if i_batch % 20 == 0:
@@ -89,12 +92,11 @@ for i_batch, sample_batched in enumerate(dataloader):
                 X = torch.tensor(val_batch['img'], dtype=torch.float32).to(device)
                 heatmaps =  val_batch['heatmaps'].to(device)
                 landmarks = val_batch['landmarks'].to(device)
-                heatmaps_pred, landmarks_pred = posenet.forward(X)
-                heatmaps_loss, landmarks_loss = posenet.calc_loss(heatmaps_pred, heatmaps, landmarks_pred, landmarks)
-                loss = 1000 * heatmaps_loss + landmarks_loss
+                heatmaps_pred, landmarks_pred, gaze_pred = posenet.forward(X)
+                heatmaps_loss, landmarks_loss, gaze_loss = posenet.calc_loss(
+                    heatmaps_pred, heatmaps, landmarks_pred, landmarks, gaze_pred, gaze)
+                loss = 1000 * heatmaps_loss + landmarks_loss + gaze_loss
                 val_losses.append(loss.item())
             val_loss = np.mean(val_losses)
             writer.add_scalar("validation loss", val_loss, i_batch)
         print(i_batch, 'validation loss', val_loss)
-
-
