@@ -27,7 +27,7 @@ train_set, val_set = torch.utils.data.random_split(dataset, (TN, VN))
 
 
 with torch.no_grad():
-    posenet = PoseNet(nstack=4, inp_dim=64, oup_dim=18).to(device)
+    posenet = PoseNet(nstack=4, inp_dim=64, oup_dim=34).to(device)
 
     if os.path.exists('checkpoint'):
         checkpoint = torch.load('checkpoint')
@@ -48,7 +48,6 @@ with torch.no_grad():
     plt.figure(figsize=(12, 3))
 
     iris_center = landmarks[-2][::-1]
-
     iris_center *= 2
     img = sample['img']
     cv2.circle(img, tuple(int(x) for x in iris_center), 2, (0, 255, 0), -1)
@@ -61,7 +60,7 @@ with torch.no_grad():
     plt.subplot(142)
     plt.imshow(img)
     plt.subplot(143)
-    plt.imshow(np.mean(y[8:16], axis=0), cmap='gray')
+    plt.imshow(np.mean(y[16:32], axis=0), cmap='gray')
     plt.subplot(144)
-    plt.imshow(np.mean(result[8:16], axis=0), cmap='gray')
+    plt.imshow(np.mean(result[16:32], axis=0), cmap='gray')
     plt.show()

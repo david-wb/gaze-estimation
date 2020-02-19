@@ -32,6 +32,14 @@ class PoseNet(nn.Module):
             Residual(128, inp_dim)
         )
 
+        self.pre2 = nn.Sequential(
+            Conv(64, 128, 7, 2, bn=True, relu=True),
+            Residual(128, 128),
+            Pool(2, 2),
+            Residual(128, 128),
+            Residual(128, inp_dim)
+        )
+
         self.hgs = nn.ModuleList([
             nn.Sequential(
                 Hourglass(4, inp_dim, bn, increase),
@@ -47,7 +55,7 @@ class PoseNet(nn.Module):
         self.merge_features = nn.ModuleList([Merge(inp_dim, inp_dim) for i in range(nstack - 1)])
         self.merge_preds = nn.ModuleList([Merge(oup_dim, inp_dim) for i in range(nstack - 1)])
 
-        self.gaze_fc1 = nn.Linear(in_features=18*2, out_features=64)
+        self.gaze_fc1 = nn.Linear(in_features=13444, out_features=64)
         self.gaze_fc2 = nn.Linear(in_features=64, out_features=2)
 
         self.nstack = nstack
@@ -59,6 +67,9 @@ class PoseNet(nn.Module):
         ## our posenet
         x = imgs.permute(0, 3, 1, 2)  # x of size 1,3,inpdim,inpdim
         x = self.pre(x)
+
+        gaze_x = self.pre2(x)
+        gaze_x = gaze_x.flatten(start_dim=1)
 
         combined_hm_preds = []
         for i in torch.arange(self.nstack):
@@ -75,7 +86,7 @@ class PoseNet(nn.Module):
         landmarks_out = softargmax2d(preds)  # N x 18 x 2
 
         # Gaze
-        gaze = landmarks_out.flatten(start_dim=1)
+        gaze = torch.cat((gaze_x, landmarks_out.flatten(start_dim=1)), dim=1)
         gaze = self.gaze_fc1(gaze)
         gaze = nn.functional.relu(gaze)
         gaze = self.gaze_fc2(gaze)

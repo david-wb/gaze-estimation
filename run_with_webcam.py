@@ -26,8 +26,8 @@ dirname = os.path.dirname(__file__)
 face_cascade = cv2.CascadeClassifier(os.path.join(dirname, 'lbpcascade_frontalface_improved.xml'))
 landmarks_detector = dlib.shape_predictor(os.path.join(dirname, 'shape_predictor_5_face_landmarks.dat'))
 
-posenet = PoseNet(nstack=4, inp_dim=64, oup_dim=18)
-checkpoint = torch.load('checkpoint_h')
+posenet = PoseNet(nstack=4, inp_dim=64, oup_dim=34)
+checkpoint = torch.load('checkpoint')
 posenet.load_state_dict(checkpoint['model_state_dict'])
 
 posenet = posenet.to(device)
@@ -82,27 +82,13 @@ def main():
 
             for ep in [left_eye, right_eye]:
                 eye_landmarks = ep.landmarks# np.asarray(np.matmul(ep.landmarks, ep.eye_sample.transform_inv.T))[:, :2]
-                iris_center = eye_landmarks[-2]
-                eyeball_center = eye_landmarks[-1]
-                i_x0, i_y0 = iris_center
-                e_x0, e_y0 = eyeball_center
-                radius = ep.eye_sample.estimated_radius
-
-                theta = -np.arcsin(np.clip((i_y0 - e_y0) / radius, -1.0, 1.0))
-                phi = np.arcsin(np.clip((i_x0 - e_x0) / (radius * -np.cos(theta)),
-                                        -1.0, 1.0))
-
                 current_gaze = ep.gaze
                 if ep.eye_sample.is_left:
                     current_gaze[1] = -current_gaze[1]
-                util.gaze.draw_gaze(orig_frame, iris_center, current_gaze,
-                                    length=60.0, thickness=1)
+                util.gaze.draw_gaze(orig_frame, ep.landmarks[-2], current_gaze,
+                                    length=120.0, thickness=1)
 
-                # cv2.circle(orig_frame,
-                #            (int(round(i_x0)), int(round(i_y0))), 2, (0, 255, 0), -1, lineType=cv2.LINE_AA)
-                # cv2.circle(orig_frame,
-                #            (int(round(e_x0)), int(round(e_y0))), 2, (255, 0, 0), -1, lineType=cv2.LINE_AA)
-                for (x, y) in ep.landmarks[:8]:#8:17]:
+                for (x, y) in ep.landmarks:
                     color = (0, 255, 0)
                     if ep.eye_sample.is_left:
                         color = (255, 0, 0)
@@ -212,11 +198,11 @@ def run_posenet(eyes: List[EyeSample], ow=150, oh=90) -> List[EyePrediction]:
             landmarks = np.asarray(landmarks.cpu().numpy()[0])
             gaze = np.asarray(gaze.cpu().numpy()[0])
             assert gaze.shape == (2,)
-            assert landmarks.shape == (18, 2)
+            assert landmarks.shape == (34, 2)
 
             landmarks = landmarks * np.array([oh/45, ow/75])
 
-            temp = np.zeros((18, 3))
+            temp = np.zeros((34, 3))
             if eye.is_left:
                 temp[:, 0] = np.array(ow) - landmarks[:, 1]
             else:
@@ -224,9 +210,9 @@ def run_posenet(eyes: List[EyeSample], ow=150, oh=90) -> List[EyePrediction]:
             temp[:, 1] = landmarks[:, 0]
             temp[:, 2] = 1.0
             landmarks = temp
-            assert landmarks.shape == (18, 3)
+            assert landmarks.shape == (34, 3)
             landmarks = np.asarray(np.matmul(landmarks, eye.transform_inv.T))[:, :2]
-            assert landmarks.shape == (18, 2)
+            assert landmarks.shape == (34, 2)
 
             #gaze = np.asarray(np.matmul([[gaze[0], gaze[1], 1.0]], eye.transform_inv.T))[:, :2]
             result.append(EyePrediction(eye_sample=eye, landmarks=landmarks, gaze=gaze))

@@ -61,8 +61,8 @@ def preprocess_unityeyes_image(img, json_data, oh=90, ow=150, heatmap_h=45, heat
         iw_2 + original_eyeball_radius * -np.cos(original_gaze[0]) * np.sin(original_gaze[1]),
         ih_2 + original_eyeball_radius * -np.sin(original_gaze[0]),
     ])
-    landmarks = np.concatenate([interior_landmarks[::2, :2],  # 8
-                                iris_landmarks[::4, :2],  # 8
+    landmarks = np.concatenate([interior_landmarks[:, :2],  # 8
+                                iris_landmarks[::2, :2],  # 8
                                 iris_centre.reshape((1, 2)),
                                 [[iw_2, ih_2]],  # Eyeball centre
                                 ])  # 18 in total
@@ -73,14 +73,14 @@ def preprocess_unityeyes_image(img, json_data, oh=90, ow=150, heatmap_h=45, heat
 
     # Swap columns so that landmarks are in (y, x), not (x, y)
     # This is because the network outputs landmarks as (y, x) values.
-    temp = np.zeros((18, 2), dtype=np.float32)
+    temp = np.zeros((34, 2), dtype=np.float32)
     temp[:, 0] = landmarks[:, 1]
     temp[:, 1] = landmarks[:, 0]
     landmarks = temp
 
     heatmaps = get_heatmaps(w=heatmap_w, h=heatmap_h, landmarks=landmarks)
 
-    assert heatmaps.shape == (18, heatmap_h, heatmap_w)
+    assert heatmaps.shape == (34, heatmap_h, heatmap_w)
 
     return {
         'img': eye,

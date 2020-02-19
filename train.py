@@ -28,7 +28,7 @@ dataloader = DataLoader(train_set, batch_size=4,
 valDataLoader = DataLoader(val_set, batch_size=4,
                         shuffle=True)
 
-posenet = PoseNet(nstack=4, inp_dim=64, oup_dim=18).to(device)
+posenet = PoseNet(nstack=4, inp_dim=64, oup_dim=34).to(device)
 
 # Use the optim package to define an Optimizer that will update the weights of
 # the model for us. Here we will use Adam; the optim package contains many other
@@ -44,13 +44,6 @@ if os.path.exists('checkpoint'):
 print('starting training')
 
 for i_batch, sample_batched in enumerate(dataloader):
-    print(i_batch)
-    if i_batch % 20 == 0:
-        torch.save({
-            'model_state_dict': posenet.state_dict(),
-            'optimizer_state_dict': optimizer.state_dict(),
-        }, 'checkpoint')
-
     print(i_batch, sample_batched['img'].size(),
           len(sample_batched['heatmaps']))
 
@@ -85,7 +78,7 @@ for i_batch, sample_batched in enumerate(dataloader):
     writer.add_scalar("Training gaze loss", gaze_loss.item(), i_batch)
     writer.add_scalar("Training loss", loss.item(), i_batch)
 
-    if i_batch % 20 == 0:
+    if i_batch > 0 and i_batch % 20 == 0:
         with torch.no_grad():
             val_losses = []
             for val_batch in valDataLoader:
@@ -100,3 +93,8 @@ for i_batch, sample_batched in enumerate(dataloader):
             val_loss = np.mean(val_losses)
             writer.add_scalar("validation loss", val_loss, i_batch)
         print(i_batch, 'validation loss', val_loss)
+
+        torch.save({
+            'model_state_dict': posenet.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+        }, 'checkpoint')
