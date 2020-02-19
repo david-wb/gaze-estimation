@@ -7,6 +7,7 @@ It is implemented with pytorch.
 
 [![Watch the video](ge_screenshot.png)](https://drive.google.com/open?id=1I0RLnd8QnFNU65Ov29B-tx_lc0GedSSB)
 
+### Methods
 
 The overall method is summarized in the following figure.
 ![alt text](fig1.png "Logo Title Text 1")
