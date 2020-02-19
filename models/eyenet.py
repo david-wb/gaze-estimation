@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 from models.layers import Conv, Hourglass, Pool, Residual
-from task.loss import HeatmapLoss
+from models.losses import HeatmapLoss
 from util.softargmax import softargmax2d
 
 
