@@ -5,11 +5,6 @@ from task.loss import HeatmapLoss
 from util.softargmax import softargmax2d
 
 
-class UnFlatten(nn.Module):
-    def forward(self, input):
-        return input.view(-1, 256, 4, 4)
-
-
 class Merge(nn.Module):
     def __init__(self, x_dim, y_dim):
         super(Merge, self).__init__()
@@ -19,9 +14,9 @@ class Merge(nn.Module):
         return self.conv(x)
 
 
-class PoseNet(nn.Module):
+class EyeNet(nn.Module):
     def __init__(self, nstack, inp_dim, oup_dim, bn=False, increase=0, **kwargs):
-        super(PoseNet, self).__init__()
+        super(EyeNet, self).__init__()
 
         self.nstack = nstack
         self.pre = nn.Sequential(
@@ -64,7 +59,7 @@ class PoseNet(nn.Module):
         self.gaze_loss = nn.MSELoss()
 
     def forward(self, imgs):
-        ## our posenet
+        ## our eyenet
         x = imgs.permute(0, 3, 1, 2)  # x of size 1,3,inpdim,inpdim
         x = self.pre(x)
 
@@ -82,8 +77,8 @@ class PoseNet(nn.Module):
 
         heatmaps_out = torch.stack(combined_hm_preds, 1)
 
-        # preds = N x 18 x 45 x 75
-        landmarks_out = softargmax2d(preds)  # N x 18 x 2
+        # preds = N x 34 x 45 x 75
+        landmarks_out = softargmax2d(preds)  # N x 34 x 2
 
         # Gaze
         gaze = torch.cat((gaze_x, landmarks_out.flatten(start_dim=1)), dim=1)

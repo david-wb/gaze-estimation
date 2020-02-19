@@ -3,7 +3,7 @@ from typing import List, Optional
 import torch
 from torch.nn import DataParallel
 
-from models.posenet import PoseNet
+from models.eyenet import EyeNet
 import os
 import numpy as np
 import cv2
@@ -26,11 +26,11 @@ dirname = os.path.dirname(__file__)
 face_cascade = cv2.CascadeClassifier(os.path.join(dirname, 'lbpcascade_frontalface_improved.xml'))
 landmarks_detector = dlib.shape_predictor(os.path.join(dirname, 'shape_predictor_5_face_landmarks.dat'))
 
-posenet = PoseNet(nstack=4, inp_dim=64, oup_dim=34)
+eyenet = EyeNet(nstack=4, inp_dim=64, oup_dim=34)
 checkpoint = torch.load('checkpoint')
-posenet.load_state_dict(checkpoint['model_state_dict'])
+eyenet.load_state_dict(checkpoint['model_state_dict'])
 
-posenet = posenet.to(device)
+eyenet = eyenet.to(device)
 
 def main():
     current_face = None
@@ -42,7 +42,7 @@ def main():
 
     while True:
         _, frame_bgr = webcam.read()
-        frame_bgr = imutils.resize(frame_bgr, width=800)
+        frame_bgr = imutils.resize(frame_bgr, width=1280)
         orig_frame = frame_bgr.copy()
         frame = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
         frame = cv2.UMat(frame)
@@ -71,7 +71,7 @@ def main():
         if landmarks is not None:
             eye_samples = segment_eyes(orig_frame, landmarks)
 
-            eye_preds = run_posenet(eye_samples)
+            eye_preds = run_eyenet(eye_samples)
             left_eyes = list(filter(lambda x: x.eye_sample.is_left, eye_preds))
             right_eyes = list(filter(lambda x: not x.eye_sample.is_left, eye_preds))
 
@@ -86,9 +86,9 @@ def main():
                 if ep.eye_sample.is_left:
                     current_gaze[1] = -current_gaze[1]
                 util.gaze.draw_gaze(orig_frame, ep.landmarks[-2], current_gaze,
-                                    length=120.0, thickness=1)
+                                    length=120.0, thickness=2)
 
-                for (x, y) in ep.landmarks:
+                for (x, y) in ep.landmarks[16:33]:
                     color = (0, 255, 0)
                     if ep.eye_sample.is_left:
                         color = (255, 0, 0)
@@ -131,7 +131,7 @@ def segment_eyes(frame, landmarks, ow=150, oh=90):
 
         cx, cy = 0.5 * (x1 + x2), 0.5 * (y1 + y2)
 
-        # Centre image on middle of eye
+        # center image on middle of eye
         translate_mat = np.asmatrix(np.eye(3))
         translate_mat[:2, 2] = [[-cx], [-cy]]
         inv_translate_mat = np.asmatrix(np.eye(3))
@@ -158,20 +158,23 @@ def segment_eyes(frame, landmarks, ow=150, oh=90):
 
         estimated_radius = 0.5 * eye_width * scale
 
-        # Centre image
-        centre_mat = np.asmatrix(np.eye(3))
-        centre_mat[:2, 2] = [[0.5 * ow], [0.5 * oh]]
-        inv_centre_mat = np.asmatrix(np.eye(3))
-        inv_centre_mat[:2, 2] = -centre_mat[:2, 2]
+        # center image
+        center_mat = np.asmatrix(np.eye(3))
+        center_mat[:2, 2] = [[0.5 * ow], [0.5 * oh]]
+        inv_center_mat = np.asmatrix(np.eye(3))
+        inv_center_mat[:2, 2] = -center_mat[:2, 2]
 
         # Get rotated and scaled, and segmented image
-        transform_mat = centre_mat * scale_mat * rotate_mat * translate_mat
-        inv_transform_mat = (inv_translate_mat * inv_rotate_mat * inv_scale_mat *
-                             inv_centre_mat)
+        transform_mat = center_mat * scale_mat * rotate_mat * translate_mat
+        inv_transform_mat = (inv_translate_mat * inv_rotate_mat * inv_scale_mat * inv_center_mat)
+
         eye_image = cv2.warpAffine(frame, transform_mat[:2, :], (ow, oh))
+
         if is_left:
             eye_image = np.fliplr(eye_image)
-
+            cv2.imshow('left eye image', eye_image)
+        else:
+            cv2.imshow('right eye image', eye_image)
         eyes.append(EyeSample(orig_img=frame.copy(),
                               img=eye_image,
                               transform_inv=inv_transform_mat,
@@ -180,21 +183,21 @@ def segment_eyes(frame, landmarks, ow=150, oh=90):
     return eyes
 
 
-def smooth_eye_landmarks(eye: EyePrediction, prev_eye: Optional[EyePrediction], smoothing=0.4):
+def smooth_eye_landmarks(eye: EyePrediction, prev_eye: Optional[EyePrediction], smoothing=0.2, gaze_smoothing=0.4):
     if prev_eye is None:
         return eye
     return EyePrediction(
         eye_sample=eye.eye_sample,
         landmarks=smoothing * prev_eye.landmarks + (1 - smoothing) * eye.landmarks,
-        gaze=smoothing * prev_eye.gaze + (1 - smoothing) * eye.gaze)
+        gaze=gaze_smoothing * prev_eye.gaze + (1 - gaze_smoothing) * eye.gaze)
 
 
-def run_posenet(eyes: List[EyeSample], ow=150, oh=90) -> List[EyePrediction]:
+def run_eyenet(eyes: List[EyeSample], ow=150, oh=90) -> List[EyePrediction]:
     result = []
     for eye in eyes:
         with torch.no_grad():
             x = torch.tensor([eye.img], dtype=torch.float32).to(device)
-            _, landmarks, gaze = posenet.forward(x)
+            _, landmarks, gaze = eyenet.forward(x)
             landmarks = np.asarray(landmarks.cpu().numpy()[0])
             gaze = np.asarray(gaze.cpu().numpy()[0])
             assert gaze.shape == (2,)
@@ -204,7 +207,7 @@ def run_posenet(eyes: List[EyeSample], ow=150, oh=90) -> List[EyePrediction]:
 
             temp = np.zeros((34, 3))
             if eye.is_left:
-                temp[:, 0] = np.array(ow) - landmarks[:, 1]
+                temp[:, 0] = ow - landmarks[:, 1]
             else:
                 temp[:, 0] = landmarks[:, 1]
             temp[:, 1] = landmarks[:, 0]
@@ -213,8 +216,6 @@ def run_posenet(eyes: List[EyeSample], ow=150, oh=90) -> List[EyePrediction]:
             assert landmarks.shape == (34, 3)
             landmarks = np.asarray(np.matmul(landmarks, eye.transform_inv.T))[:, :2]
             assert landmarks.shape == (34, 2)
-
-            #gaze = np.asarray(np.matmul([[gaze[0], gaze[1], 1.0]], eye.transform_inv.T))[:, :2]
             result.append(EyePrediction(eye_sample=eye, landmarks=landmarks, gaze=gaze))
     return result
 

@@ -2,8 +2,10 @@ from torch import nn
 
 Pool = nn.MaxPool2d
 
+
 def batchnorm(x):
     return nn.BatchNorm2d(x.size()[1])(x)
+
 
 class Conv(nn.Module):
     def __init__(self, inp_dim, out_dim, kernel_size=3, stride = 1, bn = False, relu = True):
@@ -25,7 +27,8 @@ class Conv(nn.Module):
         if self.relu is not None:
             x = self.relu(x)
         return x
-    
+
+
 class Residual(nn.Module):
     def __init__(self, inp_dim, out_dim):
         super(Residual, self).__init__()
@@ -58,6 +61,7 @@ class Residual(nn.Module):
         out = self.conv3(out)
         out += residual
         return out 
+
 
 class Hourglass(nn.Module):
     def __init__(self, n, f, bn=None, increase=0):

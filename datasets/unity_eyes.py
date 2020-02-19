@@ -1,5 +1,7 @@
 from __future__ import print_function, division
 import os
+from typing import Optional
+
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
@@ -10,16 +12,20 @@ import cv2
 import json
 from util.preprocess import preprocess_unityeyes_image
 
+
 class UnityEyesDataset(Dataset):
 
-    def __init__(self):
-        dirname = os.path.dirname(__file__)
-        self.img_paths = glob.glob(os.path.join(dirname, 'UnityEyes/imgs/*.jpg'))
+    def __init__(self, img_dir: Optional[str] = None):
+
+        if img_dir is None:
+            img_dir = os.path.join(os.path.dirname(__file__), 'UnityEyes/imgs')
+
+        self.img_paths = glob.glob(os.path.join(img_dir, '*.jpg'))
         self.img_paths = sorted(self.img_paths, key=lambda x: int(os.path.splitext(os.path.basename(x))[0]))
         self.json_paths = []
         for img_path in self.img_paths:
             idx = os.path.splitext(os.path.basename(img_path))[0]
-            self.json_paths.append(os.path.join(dirname, f'UnityEyes/imgs/{idx}.json'))
+            self.json_paths.append(os.path.join(img_dir, f'{idx}.json'))
 
     def __len__(self):
         return len(self.img_paths)

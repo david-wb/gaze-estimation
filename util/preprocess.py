@@ -57,14 +57,14 @@ def preprocess_unityeyes_image(img, json_data, oh=90, ow=150, heatmap_h=45, heat
         gaze[1] = -(np.pi + gaze[1])
     gaze = gaze.astype(np.float32)
 
-    iris_centre = np.asarray([
+    iris_center = np.asarray([
         iw_2 + original_eyeball_radius * -np.cos(original_gaze[0]) * np.sin(original_gaze[1]),
         ih_2 + original_eyeball_radius * -np.sin(original_gaze[0]),
     ])
     landmarks = np.concatenate([interior_landmarks[:, :2],  # 8
                                 iris_landmarks[::2, :2],  # 8
-                                iris_centre.reshape((1, 2)),
-                                [[iw_2, ih_2]],  # Eyeball centre
+                                iris_center.reshape((1, 2)),
+                                [[iw_2, ih_2]],  # Eyeball center
                                 ])  # 18 in total
 
     landmarks = np.asmatrix(np.pad(landmarks, ((0, 0), (0, 1)), 'constant', constant_values=1))
