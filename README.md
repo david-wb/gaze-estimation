@@ -8,7 +8,7 @@ some key modifications.
 
 NOTE: This repo has been tested only on Ubuntu 16.04 and MacOS. 
 
-First, create conda env for your system and activate it:
+First, create a conda env for your system and activate it:
 ```bash
 conda env create -f env-linux.yml
 conda activate ge-linux
