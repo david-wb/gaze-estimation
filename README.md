@@ -1,7 +1,7 @@
 # Gaze Estimation with Deep Learning
 
 This project implements a deep learning model to predict eye region landmarks and gaze direction.
-The model is trained on a set of compute generated eye images synthesized using UnityEyes [1]. This work is heavily based on [2] with
+The model is trained on a set of computer generated eye images synthesized with UnityEyes [1]. This work is heavily based on [2] with
 some key modifications. 
 
 ### Setup
@@ -34,3 +34,7 @@ python run_with_webcam.py
 The overall method is summarized in the following figure.
 ![alt text](static/fig1.png "Logo Title Text 1")
 
+### References
+
+1. https://www.cl.cam.ac.uk/research/rainbow/projects/unityeyes/
+2. https://github.com/swook/GazeML
