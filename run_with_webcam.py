@@ -26,11 +26,9 @@ dirname = os.path.dirname(__file__)
 face_cascade = cv2.CascadeClassifier(os.path.join(dirname, 'lbpcascade_frontalface_improved.xml'))
 landmarks_detector = dlib.shape_predictor(os.path.join(dirname, 'shape_predictor_5_face_landmarks.dat'))
 
-eyenet = EyeNet(nstack=4, inp_dim=64, oup_dim=34)
-checkpoint = torch.load('trained_model.pt')
+eyenet = EyeNet(nstack=4, inp_dim=64, oup_dim=34).to(device)
+checkpoint = torch.load('trained_model.pt', map_location=device)
 eyenet.load_state_dict(checkpoint['model_state_dict'])
-eyenet = eyenet.to(device)
-
 
 def main():
     current_face = None

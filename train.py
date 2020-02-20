@@ -34,7 +34,7 @@ eyenet = EyeNet(nstack=4, inp_dim=64, oup_dim=34).to(device)
 learning_rate = 1e-4
 optimizer = torch.optim.Adam(eyenet.parameters(), lr=learning_rate)
 if os.path.exists('checkpoint'):
-    checkpoint = torch.load('checkpoint')
+    checkpoint = torch.load('checkpoint', map_location=device)
     eyenet.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 

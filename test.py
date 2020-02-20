@@ -15,7 +15,7 @@ with torch.no_grad():
     eyenet = EyeNet(nstack=4, inp_dim=64, oup_dim=34).to(device)
 
     if os.path.exists('trained_model.pt'):
-        checkpoint = torch.load('trained_model.pt')
+        checkpoint = torch.load('trained_model.pt', map_location=device)
         eyenet.load_state_dict(checkpoint['model_state_dict'])
     else:
         raise Exception('Unable to find model checkpoint file: trained_model.pt. Please download it.')
