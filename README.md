@@ -6,6 +6,8 @@ some key modifications.
 
 ### Setup
 
+NOTE: This repo has been tested only on Ubuntu 16.04 and MacOS. 
+
 First, create conda env for your system and activate it:
 ```bash
 conda env create -f env-linux.yml
