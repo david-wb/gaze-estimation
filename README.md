@@ -37,7 +37,7 @@ We generated over 100k training images using UnityEyes [1]. These images are eac
   in (pitch, yaw) form. The model is constructed and trained using pytorch. The overall method is summarized in the following figure.
 ![alt text](static/fig1.png "Logo Title Text 1")
 
-The model architecture is based on the stacked hourglass model [3]. We added additional pre-hourglass layers to predict the gaze direction. 
+The model architecture is based on the stacked hourglass model [3]. We added pre-hourglass layers for predicting the gaze direction. 
 The output of these additional layers is concatenated with the predicted eye-region landmarks before
 being passed to two fully connected layers to predict the gaze direction. 
 
