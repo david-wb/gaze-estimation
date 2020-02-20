@@ -26,18 +26,22 @@ python run_with_webcam.py
 
 If you'd like to train the model yourself, please see the readme under `datasets/UnityEyes`.
 
+### Materials and Methods
+
+We generated over 100k training images using UnityEyes [1]. These images are each perfectly labeled
+ with a json metadata file. The labels provide eye region landmarks positions in screenspace,
+  the direction the eye is looking in camera space, and other additional pieces of information. We extract from each
+  training image, a region around the eye and of width equal to the eye width. We then resize the
+  extracted image to 150x90 pixels (WxH). For each preprocessed image, we create a set of heatmaps correponding
+  to 34 different eye region landmarks. The model is trained to prediction the landmark locations and the direction of gaze
+  in (pitch, yaw) form. The model is constructed and trained using pytorch. The overall method is summarized in the following figure.
+![alt text](static/fig1.png "Logo Title Text 1")
+
 
 ### Demo Video
 
 [![Watch the video](static/ge_screenshot.png)](https://drive.google.com/open?id=1I0RLnd8QnFNU65Ov29B-tx_lc0GedSSB)
 
-### Methods
-
-We generated over 100k training images using UnityEyes [1]. These images are each perfectly labeled
- with a json metadata file. The labels provide eye region landmarks points in screenspace and the look vector in camera space,
- and additionally other pieces of information such as head pose and lighting details.
-The overall method is summarized in the following figure.
-![alt text](static/fig1.png "Logo Title Text 1")
 
 ### References
 
