@@ -14,11 +14,11 @@ dataset = UnityEyesDataset()
 with torch.no_grad():
     eyenet = EyeNet(nstack=4, inp_dim=64, oup_dim=34).to(device)
 
-    if os.path.exists('checkpoint'):
-        checkpoint = torch.load('checkpoint')
+    if os.path.exists('trained_model.pt'):
+        checkpoint = torch.load('trained_model.pt')
         eyenet.load_state_dict(checkpoint['model_state_dict'])
     else:
-        raise Exception('Unable to find model checkpoint file. Please download it.')
+        raise Exception('Unable to find model checkpoint file: trained_model.pt. Please download it.')
 
     sample = dataset[0]
     x = torch.tensor([sample['img']]).float().to(device)

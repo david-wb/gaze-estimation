@@ -27,16 +27,15 @@ face_cascade = cv2.CascadeClassifier(os.path.join(dirname, 'lbpcascade_frontalfa
 landmarks_detector = dlib.shape_predictor(os.path.join(dirname, 'shape_predictor_5_face_landmarks.dat'))
 
 eyenet = EyeNet(nstack=4, inp_dim=64, oup_dim=34)
-checkpoint = torch.load('checkpoint')
+checkpoint = torch.load('trained_model.pt')
 eyenet.load_state_dict(checkpoint['model_state_dict'])
-
 eyenet = eyenet.to(device)
+
 
 def main():
     current_face = None
     landmarks = None
     alpha = 0.9
-    eye_smoothing = 0.5
     left_eye = None
     right_eye = None
 
@@ -81,7 +80,6 @@ def main():
                 right_eye = smooth_eye_landmarks(right_eyes[0], right_eye, smoothing=0.4)
 
             for ep in [left_eye, right_eye]:
-                eye_landmarks = ep.landmarks# np.asarray(np.matmul(ep.landmarks, ep.eye_sample.transform_inv.T))[:, :2]
                 current_gaze = ep.gaze
                 if ep.eye_sample.is_left:
                     current_gaze[1] = -current_gaze[1]
@@ -100,7 +98,6 @@ def main():
 
 
 def detect_landmarks(face, frame, scale_x=0, scale_y=0):
-    """Detect 5-point facial landmarks for faces in frame."""
     (x, y, w, h) = (int(e) for e in face)
     rectangle = dlib.rectangle(x, y, x + w, y + h)
     face_landmarks = landmarks_detector(frame.get(), rectangle)
@@ -109,7 +106,6 @@ def detect_landmarks(face, frame, scale_x=0, scale_y=0):
 
 def draw_cascade_face(face, frame):
     (x, y, w, h) = (int(e) for e in face)
-    # draw box over face
     cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
 
 

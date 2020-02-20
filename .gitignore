@@ -8,3 +8,4 @@ runs/
 *.dat
 checkpoint*
 *.bz2
+*.pt
