@@ -24,6 +24,8 @@ Finally, run the webcam demo. You will likely need a GPU and have cuda 10.1 inst
 python run_with_webcam.py
 ```
 
+If you'd like to train the model yourself, please see the readme under `datasets/UnityEyes`.
+
 
 ### Demo Video
 
@@ -31,6 +33,9 @@ python run_with_webcam.py
 
 ### Methods
 
+We generated over 100k training images using UnityEyes [1]. These images are each perfectly labeled
+ with a json metadata file. The labels provide eye region landmarks points in screenspace and the look vector in camera space,
+ and additionally other pieces of information such as head pose and lighting details.
 The overall method is summarized in the following figure.
 ![alt text](static/fig1.png "Logo Title Text 1")
 
