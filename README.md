@@ -6,10 +6,10 @@ some key modifications.
 
 ### Setup
 
-First, create and activate the conda environment:
+First, create conda env for your system and activate it:
 ```bash
-conda env create -f environment.yml
-conda activate ge
+conda env create -f env-linux.yml
+conda activate ge-linux
 ```
 
 Then download the pretrained model files. One is for detecting face landmarks. The other is the main pytorch model.
