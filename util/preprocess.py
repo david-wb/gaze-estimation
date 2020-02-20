@@ -22,10 +22,8 @@ def preprocess_unityeyes_image(img, json_data, oh=90, ow=150, heatmap_h=45, heat
     eye_middle = np.mean([np.amin(interior_landmarks[:, :2], axis=0),
                           np.amax(interior_landmarks[:, :2], axis=0)], axis=0)
 
+    # Normalize to eye width.
     scale = ow/eye_width
-    original_eyeball_radius = 71.7593
-    eyeball_radius = original_eyeball_radius * scale  # See: https://goo.gl/ZnXgDE
-    radius = np.float32(eyeball_radius)
 
     transform = np.zeros((2, 3))
     transform[0, 2] = -eye_middle[0] * scale + 0.5 * ow
@@ -57,10 +55,8 @@ def preprocess_unityeyes_image(img, json_data, oh=90, ow=150, heatmap_h=45, heat
         gaze[1] = -(np.pi + gaze[1])
     gaze = gaze.astype(np.float32)
 
-    iris_center = np.asarray([
-        iw_2 + original_eyeball_radius * -np.cos(original_gaze[0]) * np.sin(original_gaze[1]),
-        ih_2 + original_eyeball_radius * -np.sin(original_gaze[0]),
-    ])
+    iris_center = np.mean(iris_landmarks[:, :2], axis=0)
+
     landmarks = np.concatenate([interior_landmarks[:, :2],  # 8
                                 iris_landmarks[::2, :2],  # 8
                                 iris_center.reshape((1, 2)),
@@ -86,8 +82,6 @@ def preprocess_unityeyes_image(img, json_data, oh=90, ow=150, heatmap_h=45, heat
         'img': eye,
         'transform': transform,
         'transform_inv': transform_inv,
-        'radius': radius,
-        'original_radius': original_eyeball_radius,
         'eye_middle': eye_middle,
         'heatmaps': heatmaps,
         'landmarks': landmarks,
