@@ -50,4 +50,4 @@ being passed to two fully connected layers to predict the gaze direction.
 
 1. https://www.cl.cam.ac.uk/research/rainbow/projects/unityeyes/
 2. https://github.com/swook/GazeML
-3  https://github.com/princeton-vl/pytorch_stacked_hourglass
+3.  https://github.com/princeton-vl/pytorch_stacked_hourglass
