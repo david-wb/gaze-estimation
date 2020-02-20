@@ -32,8 +32,7 @@ If you'd like to train the model yourself, please see the readme under `datasets
 We generated over 100k training images using UnityEyes [1]. These images are each perfectly labeled
  with a json metadata file. The labels provide eye region landmark positions in screenspace,
   the direction the eye is looking in camera space, and other additional pieces of information. We extract from each
-  training image, a region around normalized to the eye width. We then resize the
-  extracted image to 150x90 pixels (WxH). For each preprocessed image, we create a set of heatmaps corresponding
+  training image a rectangle region around the eye with width that is normalized to the eye width. The extracted eye regions  are sized to 150x90 pixels (WxH). For each preprocessed image, we create a set of heatmaps corresponding
   to 34 different eye region landmarks. The model is trained to predict the landmark locations and the direction of gaze
   in (pitch, yaw) form. The model is constructed and trained using pytorch. The overall method is summarized in the following figure.
 ![alt text](static/fig1.png "Logo Title Text 1")
