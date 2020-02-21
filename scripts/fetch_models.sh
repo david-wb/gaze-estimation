@@ -11,4 +11,4 @@ rm shape_predictor_5_face_landmarks.dat.bz2
 
 
 # Download trained pytorch model
-wget "https://drive.google.com/uc?export=download&id=1E8R9ext4VjNTjEBldTNHRVc9-FsXQUp1" -O checkpoint.pt
+wget "https://drive.google.com/uc?export=download&id=1JtSCySwLheAqq7iWqk0upU4w23cUYPtj" -O checkpoint.pt
