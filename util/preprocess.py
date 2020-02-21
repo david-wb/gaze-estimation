@@ -8,6 +8,8 @@ def preprocess_unityeyes_image(img, json_data, oh=90, ow=150, heatmap_h=45, heat
     ih, iw = img.shape[:2]
     ih_2, iw_2 = ih/2.0, iw/2.0
 
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
     def process_coords(coords_list):
         coords = [eval(l) for l in coords_list]
         return np.array([(x, ih-y, z) for (x, y, z) in coords])
@@ -40,6 +42,7 @@ def preprocess_unityeyes_image(img, json_data, oh=90, ow=150, heatmap_h=45, heat
     eye = cv2.warpAffine(img, transform, (ow, oh))
 
     # Normalize eye image
+    eye = cv2.equalizeHist(eye)
     eye = eye.astype(np.float32)
     eye = eye / 255.0
 

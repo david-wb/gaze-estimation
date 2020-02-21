@@ -20,7 +20,7 @@ class EyeNet(nn.Module):
 
         self.nstack = nstack
         self.pre = nn.Sequential(
-            Conv(3, 64, 7, 1, bn=True, relu=True),
+            Conv(1, 64, 7, 1, bn=True, relu=True),
             Residual(64, 128),
             Pool(2, 2),
             Residual(128, 128),
@@ -28,11 +28,11 @@ class EyeNet(nn.Module):
         )
 
         self.pre2 = nn.Sequential(
-            Conv(64, 128, 7, 2, bn=True, relu=True),
-            Residual(128, 128),
+            Conv(64, 64, 7, 2, bn=True, relu=True),
+            Residual(64, 64),
             Pool(2, 2),
-            Residual(128, 128),
-            Residual(128, inp_dim)
+            Residual(64, 64),
+            Residual(64, inp_dim)
         )
 
         self.hgs = nn.ModuleList([
@@ -60,7 +60,8 @@ class EyeNet(nn.Module):
 
     def forward(self, imgs):
         ## our eyenet
-        x = imgs.permute(0, 3, 1, 2)  # x of size 1,3,inpdim,inpdim
+        # x = imgs.permute(0, 3, 1, 2)  # x of size 1,3,inpdim,inpdim
+        x = imgs.unsqueeze(1)
         x = self.pre(x)
 
         gaze_x = self.pre2(x)

@@ -20,21 +20,21 @@ writer = SummaryWriter(f'runs/eyenet{timestr}')
 dataset = UnityEyesDataset()
 N = len(dataset)
 
-VN = 100
+VN = 160
 TN = N - VN
 train_set, val_set = torch.utils.data.random_split(dataset, (TN, VN))
 
-dataloader = DataLoader(train_set, batch_size=4,
+dataloader = DataLoader(train_set, batch_size=16,
                         shuffle=True)
-valDataLoader = DataLoader(val_set, batch_size=4,
+valDataLoader = DataLoader(val_set, batch_size=16,
                         shuffle=True)
 
-eyenet = EyeNet(nstack=4, inp_dim=64, oup_dim=34).to(device)
+eyenet = EyeNet(nstack=3, inp_dim=64, oup_dim=34).to(device)
 
-learning_rate = 1e-4
+learning_rate = 4 * 1e-4
 optimizer = torch.optim.Adam(eyenet.parameters(), lr=learning_rate)
-if os.path.exists('checkpoint'):
-    checkpoint = torch.load('checkpoint', map_location=device)
+if os.path.exists('checkpoint.pt'):
+    checkpoint = torch.load('checkpoint.pt', map_location=device)
     eyenet.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
@@ -98,4 +98,4 @@ for i_batch, sample_batched in enumerate(dataloader):
                 torch.save({
                     'model_state_dict': eyenet.state_dict(),
                     'optimizer_state_dict': optimizer.state_dict(),
-                }, 'checkpoint')
+                }, 'checkpoint.pt')

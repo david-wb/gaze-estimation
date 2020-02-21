@@ -21,28 +21,30 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 
 webcam = cv2.VideoCapture(0)
+webcam.set(cv2.CAP_PROP_FRAME_WIDTH, 960)
+webcam.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+webcam.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+webcam.set(cv2.CAP_PROP_FPS, 60)
 
 dirname = os.path.dirname(__file__)
 face_cascade = cv2.CascadeClassifier(os.path.join(dirname, 'lbpcascade_frontalface_improved.xml'))
 landmarks_detector = dlib.shape_predictor(os.path.join(dirname, 'shape_predictor_5_face_landmarks.dat'))
 
-eyenet = EyeNet(nstack=4, inp_dim=64, oup_dim=34).to(device)
-checkpoint = torch.load('trained_model.pt', map_location=device)
+eyenet = EyeNet(nstack=3, inp_dim=64, oup_dim=34).to(device)
+checkpoint = torch.load('checkpoint.pt', map_location=device)
 eyenet.load_state_dict(checkpoint['model_state_dict'])
 
 def main():
     current_face = None
     landmarks = None
-    alpha = 0.9
+    alpha = 0.95
     left_eye = None
     right_eye = None
 
     while True:
         _, frame_bgr = webcam.read()
-        frame_bgr = imutils.resize(frame_bgr, width=1280)
         orig_frame = frame_bgr.copy()
         frame = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
-        frame = cv2.UMat(frame)
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         faces = face_cascade.detectMultiScale(gray)
 
@@ -66,30 +68,30 @@ def main():
 
 
         if landmarks is not None:
-            eye_samples = segment_eyes(orig_frame, landmarks)
+            eye_samples = segment_eyes(gray, landmarks)
 
             eye_preds = run_eyenet(eye_samples)
             left_eyes = list(filter(lambda x: x.eye_sample.is_left, eye_preds))
             right_eyes = list(filter(lambda x: not x.eye_sample.is_left, eye_preds))
 
             if left_eyes:
-                left_eye = smooth_eye_landmarks(left_eyes[0], left_eye, smoothing=0.4)
+                left_eye = smooth_eye_landmarks(left_eyes[0], left_eye, smoothing=0.1)
             if right_eyes:
-                right_eye = smooth_eye_landmarks(right_eyes[0], right_eye, smoothing=0.4)
+                right_eye = smooth_eye_landmarks(right_eyes[0], right_eye, smoothing=0.1)
 
             for ep in [left_eye, right_eye]:
-                current_gaze = ep.gaze
-                if ep.eye_sample.is_left:
-                    current_gaze[1] = -current_gaze[1]
-                util.gaze.draw_gaze(orig_frame, ep.landmarks[-2], current_gaze,
-                                    length=120.0, thickness=2)
-
                 for (x, y) in ep.landmarks[16:33]:
                     color = (0, 255, 0)
                     if ep.eye_sample.is_left:
                         color = (255, 0, 0)
                     cv2.circle(orig_frame,
-                               (int(round(x)), int(round(y))), 2, color, -1, lineType=cv2.LINE_AA)
+                               (int(round(x)), int(round(y))), 1, color, -1, lineType=cv2.LINE_AA)
+
+                gaze = ep.gaze.copy()
+                if ep.eye_sample.is_left:
+                    gaze[1] = -gaze[1]
+                util.gaze.draw_gaze(orig_frame, ep.landmarks[-2], gaze,
+                                    length=60.0, thickness=2)
 
         cv2.imshow("Webcam", orig_frame)
         cv2.waitKey(1)
@@ -98,7 +100,7 @@ def main():
 def detect_landmarks(face, frame, scale_x=0, scale_y=0):
     (x, y, w, h) = (int(e) for e in face)
     rectangle = dlib.rectangle(x, y, x + w, y + h)
-    face_landmarks = landmarks_detector(frame.get(), rectangle)
+    face_landmarks = landmarks_detector(frame, rectangle)
     return face_utils.shape_to_np(face_landmarks)
 
 
@@ -163,6 +165,7 @@ def segment_eyes(frame, landmarks, ow=150, oh=90):
         inv_transform_mat = (inv_translate_mat * inv_rotate_mat * inv_scale_mat * inv_center_mat)
 
         eye_image = cv2.warpAffine(frame, transform_mat[:2, :], (ow, oh))
+        eye_image = cv2.equalizeHist(eye_image)
 
         if is_left:
             eye_image = np.fliplr(eye_image)

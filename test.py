@@ -12,13 +12,13 @@ device = torch.device('cpu')
 dataset = UnityEyesDataset()
 
 with torch.no_grad():
-    eyenet = EyeNet(nstack=4, inp_dim=64, oup_dim=34).to(device)
+    eyenet = EyeNet(nstack=3, inp_dim=64, oup_dim=34).to(device)
 
-    if os.path.exists('trained_model.pt'):
-        checkpoint = torch.load('trained_model.pt', map_location=device)
+    if os.path.exists('checkpoint.pt'):
+        checkpoint = torch.load('checkpoint.pt', map_location=device)
         eyenet.load_state_dict(checkpoint['model_state_dict'])
     else:
-        raise Exception('Unable to find model checkpoint file: trained_model.pt. Please download it.')
+        raise Exception('Unable to find model checkpoint file. Please download it.')
 
     sample = dataset[0]
     x = torch.tensor([sample['img']]).float().to(device)
@@ -37,6 +37,8 @@ with torch.no_grad():
     iris_center *= 2
     img = sample['img']
 
+    img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+
     img_gaze_pred = img.copy()
     for (y, x) in landmarks_pred[0:32]:
         cv2.circle(img_gaze_pred, (int(x*2), int(y*2)), 2, (255, 0, 0), -1)
@@ -48,11 +50,11 @@ with torch.no_grad():
     draw_gaze(img_gaze, iris_center, sample['gaze'], length=60, color=(0, 255, 0))
 
     plt.subplot(321)
-    plt.imshow(sample['full_img'])
+    plt.imshow(cv2.cvtColor(sample['full_img'], cv2.COLOR_BGR2RGB))
     plt.title('Raw training image')
 
     plt.subplot(322)
-    plt.imshow(img)
+    plt.imshow(img, cmap='gray')
     plt.title('Preprocessed training image')
 
     plt.subplot(323)
@@ -64,10 +66,10 @@ with torch.no_grad():
     plt.title('Predicted heatmaps')
 
     plt.subplot(325)
-    plt.imshow(img_gaze)
+    plt.imshow(img_gaze, cmap='gray')
     plt.title('Ground truth landmarks and gaze vector')
 
     plt.subplot(326)
-    plt.imshow(img_gaze_pred)
+    plt.imshow(img_gaze_pred, cmap='gray')
     plt.title('Predicted landmarks and gaze vector')
     plt.show()
