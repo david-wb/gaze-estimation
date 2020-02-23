@@ -30,8 +30,11 @@ dirname = os.path.dirname(__file__)
 face_cascade = cv2.CascadeClassifier(os.path.join(dirname, 'lbpcascade_frontalface_improved.xml'))
 landmarks_detector = dlib.shape_predictor(os.path.join(dirname, 'shape_predictor_5_face_landmarks.dat'))
 
-eyenet = EyeNet(nstack=3, inp_dim=64, oup_dim=34).to(device)
 checkpoint = torch.load('checkpoint.pt', map_location=device)
+nstack = checkpoint['nstack']
+nfeatures = checkpoint['nfeatures']
+nlandmarks = checkpoint['nlandmarks']
+eyenet = EyeNet(nstack=nstack, nfeatures=nfeatures, nlandmarks=nlandmarks).to(device)
 eyenet.load_state_dict(checkpoint['model_state_dict'])
 
 def main():
@@ -114,7 +117,7 @@ def draw_landmarks(landmarks, frame):
         cv2.circle(frame, (int(x), int(y)), 2, (0, 255, 0), -1, lineType=cv2.LINE_AA)
 
 
-def segment_eyes(frame, landmarks, ow=150, oh=90):
+def segment_eyes(frame, landmarks, ow=160, oh=96):
     eyes = []
 
     # Segment eyes
@@ -189,7 +192,7 @@ def smooth_eye_landmarks(eye: EyePrediction, prev_eye: Optional[EyePrediction], 
         gaze=gaze_smoothing * prev_eye.gaze + (1 - gaze_smoothing) * eye.gaze)
 
 
-def run_eyenet(eyes: List[EyeSample], ow=150, oh=90) -> List[EyePrediction]:
+def run_eyenet(eyes: List[EyeSample], ow=160, oh=96) -> List[EyePrediction]:
     result = []
     for eye in eyes:
         with torch.no_grad():
@@ -200,7 +203,7 @@ def run_eyenet(eyes: List[EyeSample], ow=150, oh=90) -> List[EyePrediction]:
             assert gaze.shape == (2,)
             assert landmarks.shape == (34, 2)
 
-            landmarks = landmarks * np.array([oh/45, ow/75])
+            landmarks = landmarks * np.array([oh/48, ow/80])
 
             temp = np.zeros((34, 3))
             if eye.is_left:

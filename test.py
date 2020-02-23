@@ -10,26 +10,22 @@ from util.gaze import draw_gaze
 
 device = torch.device('cpu')
 dataset = UnityEyesDataset()
+checkpoint = torch.load('checkpoint.pt', map_location=device)
+nstack = checkpoint['nstack']
+nfeatures = checkpoint['nfeatures']
+nlandmarks = checkpoint['nlandmarks']
+eyenet = EyeNet(nstack=nstack, nfeatures=nfeatures, nlandmarks=nlandmarks).to(device)
+eyenet.load_state_dict(checkpoint['model_state_dict'])
 
 with torch.no_grad():
-    eyenet = EyeNet(nstack=3, inp_dim=64, oup_dim=34).to(device)
-
-    if os.path.exists('checkpoint.pt'):
-        checkpoint = torch.load('checkpoint.pt', map_location=device)
-        eyenet.load_state_dict(checkpoint['model_state_dict'])
-    else:
-        raise Exception('Unable to find model checkpoint file. Please download it.')
-
     sample = dataset[0]
     x = torch.tensor([sample['img']]).float().to(device)
     heatmaps = sample['heatmaps']
     heatmaps_pred, landmarks_pred, gaze_pred = eyenet.forward(x)
 
-    heatmaps_pred = heatmaps_pred.cpu().numpy()[0, -1, :]
-    heatmaps_pred = [cv2.resize(x, (150, 90)) for x in heatmaps]
     landmarks_pred = landmarks_pred.cpu().numpy()[0, :]
 
-    result = [gaussian_2d(w=75, h=45, cx=c[1], cy=c[0], sigma=3) for c in landmarks_pred]
+    result = [gaussian_2d(w=80, h=48, cx=c[1], cy=c[0], sigma=3) for c in landmarks_pred]
 
     plt.figure(figsize=(8, 9))
 

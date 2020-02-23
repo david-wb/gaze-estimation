@@ -3,10 +3,15 @@ import cv2
 import util.gaze
 
 
-def preprocess_unityeyes_image(img, json_data, oh=90, ow=150, heatmap_h=45, heatmap_w=75):
+def preprocess_unityeyes_image(img, json_data):
+    ow = 160
+    oh = 96
     # Prepare to segment eye image
     ih, iw = img.shape[:2]
     ih_2, iw_2 = ih/2.0, iw/2.0
+
+    heatmap_w = int(ow/2)
+    heatmap_h = int(oh/2)
 
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 

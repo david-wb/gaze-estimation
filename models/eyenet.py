@@ -15,42 +15,51 @@ class Merge(nn.Module):
 
 
 class EyeNet(nn.Module):
-    def __init__(self, nstack, inp_dim, oup_dim, bn=False, increase=0, **kwargs):
+    def __init__(self, nstack, nfeatures, nlandmarks, bn=False, increase=0, **kwargs):
         super(EyeNet, self).__init__()
+
+        self.img_w = 160
+        self.img_h = 96
+        self.nstack = nstack
+        self.nfeatures = nfeatures
+        self.nlandmarks = nlandmarks
+
+        self.heatmap_w = self.img_w / 2
+        self.heatmap_h = self.img_h / 2
 
         self.nstack = nstack
         self.pre = nn.Sequential(
             Conv(1, 64, 7, 1, bn=True, relu=True),
-            Residual(64, 128),
+            Residual(64, 64),
             Pool(2, 2),
-            Residual(128, 128),
-            Residual(128, inp_dim)
+            Residual(64, 64),
+            Residual(64, nfeatures)
         )
 
         self.pre2 = nn.Sequential(
-            Conv(64, 64, 7, 2, bn=True, relu=True),
+            Conv(nfeatures, 64, 7, 2, bn=True, relu=True),
             Residual(64, 64),
             Pool(2, 2),
             Residual(64, 64),
-            Residual(64, inp_dim)
+            Residual(64, nfeatures)
         )
 
         self.hgs = nn.ModuleList([
             nn.Sequential(
-                Hourglass(4, inp_dim, bn, increase),
+                Hourglass(4, nfeatures, bn, increase),
             ) for i in range(nstack)])
 
         self.features = nn.ModuleList([
             nn.Sequential(
-                Residual(inp_dim, inp_dim),
-                Conv(inp_dim, inp_dim, 1, bn=True, relu=True)
+                Residual(nfeatures, nfeatures),
+                Conv(nfeatures, nfeatures, 1, bn=True, relu=True)
             ) for i in range(nstack)])
 
-        self.outs = nn.ModuleList([Conv(inp_dim, oup_dim, 1, relu=False, bn=False) for i in range(nstack)])
-        self.merge_features = nn.ModuleList([Merge(inp_dim, inp_dim) for i in range(nstack - 1)])
-        self.merge_preds = nn.ModuleList([Merge(oup_dim, inp_dim) for i in range(nstack - 1)])
+        self.outs = nn.ModuleList([Conv(nfeatures, nlandmarks, 1, relu=False, bn=False) for i in range(nstack)])
+        self.merge_features = nn.ModuleList([Merge(nfeatures, nfeatures) for i in range(nstack - 1)])
+        self.merge_preds = nn.ModuleList([Merge(nlandmarks, nfeatures) for i in range(nstack - 1)])
 
-        self.gaze_fc1 = nn.Linear(in_features=13444, out_features=64)
+        self.gaze_fc1 = nn.Linear(in_features=int(nfeatures * self.img_w * self.img_h / 64 + nlandmarks*2), out_features=64)
         self.gaze_fc2 = nn.Linear(in_features=64, out_features=2)
 
         self.nstack = nstack
@@ -59,8 +68,7 @@ class EyeNet(nn.Module):
         self.gaze_loss = nn.MSELoss()
 
     def forward(self, imgs):
-        ## our eyenet
-        # x = imgs.permute(0, 3, 1, 2)  # x of size 1,3,inpdim,inpdim
+        # imgs of size 1,ih,iw
         x = imgs.unsqueeze(1)
         x = self.pre(x)
 
@@ -78,8 +86,8 @@ class EyeNet(nn.Module):
 
         heatmaps_out = torch.stack(combined_hm_preds, 1)
 
-        # preds = N x 34 x 45 x 75
-        landmarks_out = softargmax2d(preds)  # N x 34 x 2
+        # preds = N x nlandmarks * heatmap_w * heatmap_h
+        landmarks_out = softargmax2d(preds)  # N x nlandmarks x 2
 
         # Gaze
         gaze = torch.cat((gaze_x, landmarks_out.flatten(start_dim=1)), dim=1)
