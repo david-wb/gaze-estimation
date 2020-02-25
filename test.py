@@ -18,7 +18,7 @@ eyenet = EyeNet(nstack=nstack, nfeatures=nfeatures, nlandmarks=nlandmarks).to(de
 eyenet.load_state_dict(checkpoint['model_state_dict'])
 
 with torch.no_grad():
-    sample = dataset[0]
+    sample = dataset[2]
     x = torch.tensor([sample['img']]).float().to(device)
     heatmaps = sample['heatmaps']
     heatmaps_pred, landmarks_pred, gaze_pred = eyenet.forward(x)
@@ -36,12 +36,12 @@ with torch.no_grad():
     img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
 
     img_gaze_pred = img.copy()
-    for (y, x) in landmarks_pred[0:32]:
+    for (y, x) in landmarks_pred[-2:-1]:
         cv2.circle(img_gaze_pred, (int(x*2), int(y*2)), 2, (255, 0, 0), -1)
     draw_gaze(img_gaze_pred, iris_center, gaze_pred.cpu().numpy()[0, :], length=60, color=(255, 0, 0))
 
     img_gaze = img.copy()
-    for (y, x) in sample['landmarks'][0:32]:
+    for (x, y) in sample['landmarks'][-2:-1]:
         cv2.circle(img_gaze, (int(x*2), int(y*2)), 2, (0, 255, 0), -1)
     draw_gaze(img_gaze, iris_center, sample['gaze'], length=60, color=(0, 255, 0))
 

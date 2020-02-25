@@ -1,7 +1,7 @@
 import numpy as np
 import cv2
 import util.gaze
-
+from scipy.spatial.transform import Rotation as R
 
 def preprocess_unityeyes_image(img, json_data):
     ow = 160
@@ -32,19 +32,29 @@ def preprocess_unityeyes_image(img, json_data):
     # Normalize to eye width.
     scale = ow/eye_width
 
-    transform = np.zeros((2, 3))
-    transform[0, 2] = -eye_middle[0] * scale + 0.5 * ow
-    transform[1, 2] = -eye_middle[1] * scale + 0.5 * oh
-    transform[0, 0] = scale
-    transform[1, 1] = scale
-    
-    transform_inv = np.zeros((2, 3))
-    transform_inv[:, 2] = -transform[:, 2]
-    transform_inv[0, 0] = 1/scale
-    transform_inv[1, 1] = 1/scale
+    translate = np.asmatrix(np.eye(3))
+    translate[0, 2] = -eye_middle[0] * scale
+    translate[1, 2] = -eye_middle[1] * scale
+
+    recenter = np.asmatrix(np.eye(3))
+    recenter[0, 2] = ow/2
+    recenter[1, 2] = oh/2
+
+    scale_mat = np.asmatrix(np.eye(3))
+    scale_mat[0, 0] = scale
+    scale_mat[1, 1] = scale
+
+    angle = 0 #np.random.normal(0, 1) * 20 * np.pi/180
+    rotation = R.from_rotvec([0, 0, angle]).as_matrix()
+
+    transform = recenter * rotation * translate * scale_mat
+    transform_inv = np.linalg.inv(transform)
     
     # Apply transforms
-    eye = cv2.warpAffine(img, transform, (ow, oh))
+    eye = cv2.warpAffine(img, transform[:2], (ow, oh))
+
+    rand_blur = np.random.uniform(low=0, high=20)
+    eye = cv2.GaussianBlur(eye, (5, 5), rand_blur)
 
     # Normalize eye image
     eye = cv2.equalizeHist(eye)
@@ -53,14 +63,10 @@ def preprocess_unityeyes_image(img, json_data):
 
     # Gaze
     # Convert look vector to gaze direction in polar angles
-    look_vec = np.array(eval(json_data['eye_details']['look_vec']))[:3]
-    look_vec[0] = -look_vec[0]
-    original_gaze = util.gaze.vector_to_pitchyaw(look_vec.reshape((1, 3))).flatten()
-    gaze = util.gaze.vector_to_pitchyaw(look_vec.reshape((1, 3))).flatten()
-    if gaze[1] > 0.0:
-        gaze[1] = np.pi - gaze[1]
-    elif gaze[1] < 0.0:
-        gaze[1] = -(np.pi + gaze[1])
+    look_vec = np.array(eval(json_data['eye_details']['look_vec']))[:3].reshape((1, 3))
+    #look_vec = np.matmul(look_vec, rotation.T)
+
+    gaze = util.gaze.vector_to_pitchyaw(-look_vec).flatten()
     gaze = gaze.astype(np.float32)
 
     iris_center = np.mean(iris_landmarks[:, :2], axis=0)
@@ -72,7 +78,7 @@ def preprocess_unityeyes_image(img, json_data):
                                 ])  # 18 in total
 
     landmarks = np.asmatrix(np.pad(landmarks, ((0, 0), (0, 1)), 'constant', constant_values=1))
-    landmarks = np.asarray(landmarks * transform.T) * np.array([heatmap_w/ow, heatmap_h/oh])
+    landmarks = np.asarray(landmarks * transform[:2].T) * np.array([heatmap_w/ow, heatmap_h/oh])
     landmarks = landmarks.astype(np.float32)
 
     # Swap columns so that landmarks are in (y, x), not (x, y)
@@ -88,12 +94,12 @@ def preprocess_unityeyes_image(img, json_data):
 
     return {
         'img': eye,
-        'transform': transform,
-        'transform_inv': transform_inv,
-        'eye_middle': eye_middle,
-        'heatmaps': heatmaps,
-        'landmarks': landmarks,
-        'gaze': gaze
+        'transform': np.asarray(transform),
+        'transform_inv': np.asarray(transform_inv),
+        'eye_middle': np.asarray(eye_middle),
+        'heatmaps': np.asarray(heatmaps),
+        'landmarks': np.asarray(landmarks),
+        'gaze': np.asarray(gaze)
     }
 
 
@@ -113,5 +119,5 @@ def gaussian_2d(w, h, cx, cy, sigma=1.0):
 def get_heatmaps(w, h, landmarks):
     heatmaps = []
     for (y, x) in landmarks:
-        heatmaps.append(gaussian_2d(w, h, cx=x, cy=y, sigma=3.0))
+        heatmaps.append(gaussian_2d(w, h, cx=x, cy=y, sigma=1.0))
     return np.array(heatmaps)

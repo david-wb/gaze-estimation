@@ -93,8 +93,7 @@ def main():
                 gaze = ep.gaze.copy()
                 if ep.eye_sample.is_left:
                     gaze[1] = -gaze[1]
-                util.gaze.draw_gaze(orig_frame, ep.landmarks[-2], gaze,
-                                    length=60.0, thickness=2)
+                util.gaze.draw_gaze(orig_frame, ep.landmarks[-2], gaze, length=60.0, thickness=2)
 
         cv2.imshow("Webcam", orig_frame)
         cv2.waitKey(1)
@@ -136,17 +135,6 @@ def segment_eyes(frame, landmarks, ow=160, oh=96):
         inv_translate_mat = np.asmatrix(np.eye(3))
         inv_translate_mat[:2, 2] = -translate_mat[:2, 2]
 
-        # Rotate to be upright
-        roll = 0.0 if x1 == x2 else np.arctan((y2 - y1) / (x2 - x1))
-        rotate_mat = np.asmatrix(np.eye(3))
-        cos = np.cos(-roll)
-        sin = np.sin(-roll)
-        rotate_mat[0, 0] = cos
-        rotate_mat[0, 1] = -sin
-        rotate_mat[1, 0] = sin
-        rotate_mat[1, 1] = cos
-        inv_rotate_mat = rotate_mat.T
-
         # Scale
         scale = ow / eye_width
         scale_mat = np.asmatrix(np.eye(3))
@@ -164,8 +152,8 @@ def segment_eyes(frame, landmarks, ow=160, oh=96):
         inv_center_mat[:2, 2] = -center_mat[:2, 2]
 
         # Get rotated and scaled, and segmented image
-        transform_mat = center_mat * scale_mat * rotate_mat * translate_mat
-        inv_transform_mat = (inv_translate_mat * inv_rotate_mat * inv_scale_mat * inv_center_mat)
+        transform_mat = center_mat * scale_mat * translate_mat
+        inv_transform_mat = (inv_translate_mat * inv_scale_mat * inv_center_mat)
 
         eye_image = cv2.warpAffine(frame, transform_mat[:2, :], (ow, oh))
         eye_image = cv2.equalizeHist(eye_image)

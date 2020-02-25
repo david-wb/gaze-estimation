@@ -106,4 +106,4 @@ class EyeNet(nn.Module):
         landmarks_loss = self.landmarks_loss(landmarks_pred, landmarks)
         gaze_loss = self.gaze_loss(gaze_pred, gaze)
 
-        return torch.sum(heatmap_loss), landmarks_loss, gaze_loss
+        return torch.sum(heatmap_loss), landmarks_loss, 1000* gaze_loss
