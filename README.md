@@ -30,15 +30,14 @@ If you'd like to train the model yourself, please see the readme under `datasets
 
 ### Materials and Methods
 
-Over 100k training images were generated using UnityEyes [1]. These images are each perfectly labeled
+Over 100k training images were generated using UnityEyes [1]. These images are each labeled
  with a json metadata file. The labels provide eye region landmark positions in screenspace,
-  the direction the eye is looking in camera space, and other additional pieces of information. A rectangle region around the eye was extracted from each raw traing image and normalized to have a width equal to the eye width (1.5 times the inner and outer eye corner distance). 
+  the direction the eye is looking in camera space, and other pieces of information. A rectangular region around the eye was extracted from each raw traing image and normalized to have a width equal to the eye width (1.5 times the distance between eye corners). 
   For each preprocessed image, a set of heatmaps corresponding
-  to 34 different eye region landmarks is created. The model is trained to predict the landmark locations and the direction of gaze
-  in (pitch, yaw) form. The model is constructed and trained using pytorch. The overall method is summarized in the following figure.
+  to 34 eye region landmarks was created. The model was trained to regress directly on the landmark locations and gaze direction in (pitch, yaw) form. The model was implemented in pytorch. The overall method is summarized in the following figure.
 ![alt text](static/fig1.png "Logo Title Text 1")
 
-The model architecture is based on the stacked hourglass model [3]. The main modification was to add a separate pre-hourglass layer for predicting the gaze direction. The output of the additional layer is concatenated with the predicted eye-region landmarks before being passed to two fully connected layers to predict the gaze direction. 
+The model architecture is based on the stacked hourglass model [3]. The main modification was to add a separate pre-hourglass layer for predicting the gaze direction. The output of the additional layer is concatenated with the predicted eye-region landmarks before being passed to two fully connected layers. This way, the model can make use of the high-level landmark features for predicting the gaze direction. 
 
 ### Demo Video
 
