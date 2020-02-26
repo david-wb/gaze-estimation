@@ -85,5 +85,5 @@ class Hourglass(nn.Module):
         low1 = self.low1(pool1)
         low2 = self.low2(low1)
         low3 = self.low3(low2)
-        up2 = nn.functional.interpolate(low3, x.shape[2:])
+        up2 = nn.functional.interpolate(low3, x.shape[2:], mode='bilinear')
         return up1 + up2

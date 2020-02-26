@@ -36,9 +36,11 @@ def preprocess_unityeyes_image(img, json_data):
     translate[0, 2] = -eye_middle[0] * scale
     translate[1, 2] = -eye_middle[1] * scale
 
+    rand_x = np.random.uniform(low=-10, high=10)
+    rand_y = np.random.uniform(low=-10, high=10)
     recenter = np.asmatrix(np.eye(3))
-    recenter[0, 2] = ow/2
-    recenter[1, 2] = oh/2
+    recenter[0, 2] = ow/2 + rand_x
+    recenter[1, 2] = oh/2 + rand_y
 
     scale_mat = np.asmatrix(np.eye(3))
     scale_mat[0, 0] = scale
@@ -119,5 +121,5 @@ def gaussian_2d(w, h, cx, cy, sigma=1.0):
 def get_heatmaps(w, h, landmarks):
     heatmaps = []
     for (y, x) in landmarks:
-        heatmaps.append(gaussian_2d(w, h, cx=x, cy=y, sigma=1.0))
+        heatmaps.append(gaussian_2d(w, h, cx=x, cy=y, sigma=2.0))
     return np.array(heatmaps)

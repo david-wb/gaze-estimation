@@ -1,3 +1,5 @@
+import os
+
 import torch
 from datasets.unity_eyes import UnityEyesDataset
 from torch.utils.data import DataLoader
@@ -19,7 +21,7 @@ parser = argparse.ArgumentParser(description='Trains an EyeNet model')
 parser.add_argument('--nstack', type=int, default=3, help='Number of hourglass layers.')
 parser.add_argument('--nfeatures', type=int, default=32, help='Number of feature maps to use.')
 parser.add_argument('--nlandmarks', type=int, default=34, help='Number of landmarks to be predicted.')
-parser.add_argument('--nepochs', type=int, default=3, help='Number of epochs to iterate over all training examples.')
+parser.add_argument('--nepochs', type=int, default=10, help='Number of epochs to iterate over all training examples.')
 parser.add_argument('--start_from', help='A model checkpoint file to begin training from. This overrides all other arguments.')
 parser.add_argument('--out', default='checkpoint.pt', help='The output checkpoint filename')
 args = parser.parse_args()
@@ -139,6 +141,8 @@ def main():
         optimizer = torch.optim.Adam(eyenet.parameters(), lr=learning_rate)
         eyenet.load_state_dict(start_from['model_state_dict'])
         optimizer.load_state_dict(start_from['optimizer_state_dict'])
+    elif os.path.exists(args.out):
+        raise Exception(f'Out file {args.out} already exists.')
     else:
         nstack = args.nstack
         nfeatures = args.nfeatures

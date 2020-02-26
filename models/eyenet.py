@@ -30,18 +30,18 @@ class EyeNet(nn.Module):
         self.nstack = nstack
         self.pre = nn.Sequential(
             Conv(1, 64, 7, 1, bn=True, relu=True),
-            Residual(64, 64),
+            Residual(64, 128),
             Pool(2, 2),
-            Residual(64, 64),
-            Residual(64, nfeatures)
+            Residual(128, 128),
+            Residual(128, nfeatures)
         )
 
         self.pre2 = nn.Sequential(
             Conv(nfeatures, 64, 7, 2, bn=True, relu=True),
-            Residual(64, 64),
+            Residual(64, 128),
             Pool(2, 2),
-            Residual(64, 64),
-            Residual(64, nfeatures)
+            Residual(128, 128),
+            Residual(128, nfeatures)
         )
 
         self.hgs = nn.ModuleList([
@@ -59,8 +59,8 @@ class EyeNet(nn.Module):
         self.merge_features = nn.ModuleList([Merge(nfeatures, nfeatures) for i in range(nstack - 1)])
         self.merge_preds = nn.ModuleList([Merge(nlandmarks, nfeatures) for i in range(nstack - 1)])
 
-        self.gaze_fc1 = nn.Linear(in_features=int(nfeatures * self.img_w * self.img_h / 64 + nlandmarks*2), out_features=64)
-        self.gaze_fc2 = nn.Linear(in_features=64, out_features=2)
+        self.gaze_fc1 = nn.Linear(in_features=int(nfeatures * self.img_w * self.img_h / 64 + nlandmarks*2), out_features=256)
+        self.gaze_fc2 = nn.Linear(in_features=256, out_features=2)
 
         self.nstack = nstack
         self.heatmapLoss = HeatmapLoss()
@@ -106,4 +106,4 @@ class EyeNet(nn.Module):
         landmarks_loss = self.landmarks_loss(landmarks_pred, landmarks)
         gaze_loss = self.gaze_loss(gaze_pred, gaze)
 
-        return torch.sum(heatmap_loss), landmarks_loss, 1000* gaze_loss
+        return torch.sum(heatmap_loss), landmarks_loss, 1000 * gaze_loss

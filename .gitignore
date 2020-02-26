@@ -1,5 +1,6 @@
 datasets/UnityEyes/imgs/
 datasets/MPIIGaze/
+datasets/UTMultiview/
 __pycache__/
 runs/
 .idea/
@@ -11,3 +12,4 @@ checkpoint*
 *.bz2
 *.pt
 *.tar.gz
+*.pdf
